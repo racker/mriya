@@ -37,7 +37,18 @@ def printProgress (iteration, total, prefix = '', suffix = '', decimals = 1, bar
 
 def success_records_check( data, key_name='success'):
     success_count = 0
+    if not data:
+        return None
+
     for element in data:
-        if element['success'] == True:
+        if element[key_name] == True:
             success_count = success_count + 1
     return '{0}/{1}'.format(success_count, len(data))
+
+def spin(text):
+    spin.symbol = (1 + spin.symbol) % 4
+
+    symbols = ['\\', '|', '/', '|']
+    sys.stdout.write( '\r%s %s' % (text, symbols[spin.symbol])),
+    sys.stdout.flush()
+spin.symbol = 0
