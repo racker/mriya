@@ -17,10 +17,21 @@ from json import loads, load, dump
 
 ConnectorParam = namedtuple('ConnectorParam',
                          ['username', 'password', 'url_prefix',
-                          'organization_id', 'consumer_key', 'consumer_secret', 'token'])
+                          'organization_id', 'consumer_key',
+                          'consumer_secret', 'token'])
 
 QUERY_LIMIT = 200
 session_file = 'sessions.ini'
+
+def get_conn_param(conf_dict):
+    param = ConnectorParam(conf_dict['username'].encode('utf-8'),
+                           conf_dict['password'].encode('utf-8'),
+                           conf_dict['host_prefix'].encode('utf-8'),
+                           organization_id='',
+                           conf_dict['consumer_key'].encode('utf-8'),
+                           conf_dict['consumer_secret'].encode('utf-8'),
+                           token='')
+    return param
 
 
 class SFBeatboxConnector:
