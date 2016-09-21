@@ -27,10 +27,10 @@ def get_conn_param(conf_dict):
     param = ConnectorParam(conf_dict['username'].encode('utf-8'),
                            conf_dict['password'].encode('utf-8'),
                            conf_dict['host_prefix'].encode('utf-8'),
-                           organization_id='',
+                           '',
                            conf_dict['consumer_key'].encode('utf-8'),
                            conf_dict['consumer_secret'].encode('utf-8'),
-                           token='')
+                           '')
     return param
 
 
@@ -237,18 +237,9 @@ class RESTConnector:
             self.get_oauth2_token()
             job = self.bulk.create_query_job(object, contentType='CSV')
         batch = self.bulk.query(job, soql)
-        clock = 0
-        while True:
-            if clock == 10:
-                clock = 0
-                if self.bulk.is_batch_done(job, batch):
-                    break
-            sleep(0.5)
-            clock = clock + 1
-            spin('Wait for job done')
-        print('\nQuery done')
+        self.connector_wait(job,batch,'Query done')
+        # self.bulk.close_job(job)
 
-        self.bulk.close_job(job)
         if csv_file:
             open_mode = 'w'
             with open(csv_file, open_mode) as f_csv:
@@ -261,46 +252,26 @@ class RESTConnector:
             for row in self.bulk.get_batch_result_iter(job, batch, parse_csv=True):
                 data.append(row)
             return data
-        print('\nbulk load done')
+
 
 
     def bulk_insert(self, object, data):
         job = self.bulk.create_insert_job(object, contentType='CSV')
         csv_iter = CsvDictsAdapter(iter(data))
         batch = self.bulk.post_bulk_batch(job, csv_iter)
-        clock = 0
-        while True:
-            if clock == 10:
-                clock = 0
-                if self.bulk.is_batch_done(job, batch):
-                    break
-            sleep(0.5)
-            clock = clock + 1
-            spin('Wait for job done')
-        self.bulk.wait_for_batch(job, batch)
-        # do not work shuld return Id`s of created elements
+        self.connector_wait(job,batch, 'bulk insert done')
+        # do not work should return Id`s of created elements
         # res = self.bulk.get_batch_result_iter(job,batch,parse_csv=False)
         self.bulk.close_job(job)
-        print('\nbulk insert done')
 
     def bulk_update(self, object, data):
         job = self.bulk.create_update_job(object, contentType='CSV')
         csv_iter = CsvDictsAdapter(iter(data))
         batch = self.bulk.post_bulk_batch(job, csv_iter)
-        clock = 0
-        while True:
-            if clock == 10:
-                clock = 0
-                if self.bulk.is_batch_done(job, batch):
-                    break
-            sleep(0.5)
-            clock = clock + 1
-            spin('Wait for job done')
-        self.bulk.wait_for_batch(job, batch)
+        self.connector_wait(job, batch, 'bulk update done')
         # do not work shuld return Id`s of created elements
         # res = self.bulk.get_batch_result_iter(job,batch,parse_csv=False)
         self.bulk.close_job(job)
-        print('\nbulk update done')
 
 
     def bulk_delete(self, object, where):
@@ -310,4 +281,24 @@ class RESTConnector:
         print('deletion done')
 
 
+    def bulk_upsert(self, object, external_id_name, data):
+        job = self.bulk.create_upsert_job(object_name=object, external_id_name=external_id_name)
+        csv_iter = CsvDictsAdapter(iter(data))
+        batch = self.bulk.post_bulk_batch(job, csv_iter)
+        self.connector_wait(job, batch, 'upserting done')
 
+
+
+    def connector_wait(self, job, batch, ending_message=''):
+        wait_message = 'Wait for job done'
+        clock = 0
+        while True:
+            if clock == 10:
+                clock = 0
+                if self.bulk.is_batch_done(job, batch):
+                    break
+            sleep(0.5)
+            clock = clock + 1
+            spin(wait_message)
+        print('\r' + ending_message.ljust( len(ending_message) if len(ending_message) > len(wait_message) + 4 else len(wait_message) + 4))
+        self.bulk.wait_for_batch(job, batch)
