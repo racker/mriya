@@ -46,9 +46,9 @@ def success_records_check( data, key_name='success'):
     return '{0}/{1}'.format(success_count, len(data))
 
 def spin(text):
-    spin.symbol = (1 + spin.symbol) % 4
+    spin.symbol = (1 + spin.symbol) % 7
 
-    symbols = ['\\', '|', '/', '|']
+    symbols = ['|','/','-','\\','|','/','-']
     sys.stdout.write( '\r%s %s' % (text, symbols[spin.symbol])),
     sys.stdout.flush()
 spin.symbol = 0
