@@ -27,10 +27,10 @@ def get_conn_param(conf_dict):
     param = ConnectorParam(conf_dict['username'].encode('utf-8'),
                            conf_dict['password'].encode('utf-8'),
                            conf_dict['host_prefix'].encode('utf-8'),
-                           organization_id='',
+                           '',
                            conf_dict['consumer_key'].encode('utf-8'),
                            conf_dict['consumer_secret'].encode('utf-8'),
-                           token='')
+                           '')
     return param
 
 
@@ -167,7 +167,7 @@ class RESTConnector:
         self.instance_url = 'https://' + connector_param.url_prefix + 'salesforce.com'
         self.token_url = 'https://' + connector_param.url_prefix + 'salesforce.com/services/oauth2/token'
         self.access_token = None
-        self.get_token()
+        self.access_token = self.get_token()
         self.bulk = SalesforceBulk(sessionId=self.access_token, host=urlparse(self.instance_url).hostname)
 
 
