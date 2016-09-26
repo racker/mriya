@@ -284,8 +284,11 @@ class RESTConnector:
         batch = self.bulk.post_bulk_batch(job, csv_iter)
         self.connector_wait(job, batch, 'bulk update done')
         # do not work shuld return Id`s of created elements
-        # res = self.bulk.get_batch_result_iter(job,batch,parse_csv=False)
         self.bulk.close_job(job)
+        rows = []
+        for row in self.get_batch_result_iter(job, batch, parse_csv=False):
+            rows.append(row)
+        return rows
 
 
     def bulk_delete(self, object, where):
@@ -325,6 +328,9 @@ class RESTConnector:
     def get_batch_result_iter(self, job_id, batch_id, parse_csv=False,
                               logger=None):
         """
+
+        **** This code snippet was taken from salesforce bulk library ****
+
         Return a line interator over the contents of a batch result document. If
         csv=True then parses the first line as the csv header and the iterator
         returns dicts.
