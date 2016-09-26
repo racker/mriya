@@ -167,7 +167,7 @@ class RESTConnector:
         self.instance_url = 'https://' + connector_param.url_prefix + 'salesforce.com'
         self.token_url = 'https://' + connector_param.url_prefix + 'salesforce.com/services/oauth2/token'
         self.access_token = None
-        self.get_token()
+        self.access_token = self.get_token()
         self.bulk = SalesforceBulk(sessionId=self.access_token, host=urlparse(self.instance_url).hostname)
 
 
