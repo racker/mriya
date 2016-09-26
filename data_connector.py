@@ -162,7 +162,7 @@ class SFBeatboxConnector:
 
 
 class RESTConnector:
-    def __init__(self, connector_param):
+    def __init__(self, connector_param, default_job=None):
         self.connector_param = connector_param
         self.instance_url = 'https://' + connector_param.url_prefix + 'salesforce.com'
         self.token_url = 'https://' + connector_param.url_prefix + 'salesforce.com/services/oauth2/token'
@@ -171,11 +171,25 @@ class RESTConnector:
         self.bulk = SalesforceBulk(sessionId=self.access_token, host=urlparse(self.instance_url).hostname)
 
 
+    def check_token(self):
+        try:
+            job = self.bulk.create_query_job(object, contentType='CSV')
+            test_query = 'SELECT ID FROM Account LIMIT 1'
+            batch = self.bulk.query(job, test_query)
+            self.connector_wait(job,batch,'Query done')
+            self.bulk.close_job(job)
+            return True
+        except:
+            return False
+
+
     def get_token(self):
         if self.access_token == None:
             cached_token = self.get_cached_token()
             if cached_token:
                 self.access_token = cached_token
+                if not self.check_token():
+                    self.get_oauth2_token()
             else:
                 self.get_oauth2_token()
         else:
@@ -238,7 +252,7 @@ class RESTConnector:
             job = self.bulk.create_query_job(object, contentType='CSV')
         batch = self.bulk.query(job, soql)
         self.connector_wait(job,batch,'Query done')
-        # self.bulk.close_job(job)
+        self.bulk.close_job(job)
 
         if csv_file:
             open_mode = 'w'
@@ -286,7 +300,11 @@ class RESTConnector:
         csv_iter = CsvDictsAdapter(iter(data))
         batch = self.bulk.post_bulk_batch(job, csv_iter)
         self.connector_wait(job, batch, 'upserting done')
-
+        self.bulk.close_job(job)
+        rows = []
+        for row in self.get_batch_result_iter(job, batch, parse_csv=False):
+            rows.append(row)
+        return rows
 
 
     def connector_wait(self, job, batch, ending_message=''):
@@ -302,3 +320,43 @@ class RESTConnector:
             spin(wait_message)
         print('\r' + ending_message.ljust( len(ending_message) if len(ending_message) > len(wait_message) + 4 else len(wait_message) + 4))
         self.bulk.wait_for_batch(job, batch)
+
+
+    def get_batch_result_iter(self, job_id, batch_id, parse_csv=False,
+                              logger=None):
+        """
+        Return a line interator over the contents of a batch result document. If
+        csv=True then parses the first line as the csv header and the iterator
+        returns dicts.
+        """
+        status = self.bulk.batch_status(job_id, batch_id)
+        if status['state'] != 'Completed':
+            return None
+        elif logger:
+            if 'numberRecordsProcessed' in status:
+                logger("Bulk batch %d processed %s records" %
+                       (batch_id, status['numberRecordsProcessed']))
+            if 'numberRecordsFailed' in status:
+                failed = int(status['numberRecordsFailed'])
+                if failed > 0:
+                    logger("Bulk batch %d had %d failed records" %
+                           (batch_id, failed))
+        print(self.bulk.headers())
+        uri = self.bulk.endpoint + \
+            "/job/%s/batch/%s/result" % (job_id, batch_id)
+        r = requests.get(uri, headers=self.bulk.headers(), stream=True)
+
+        # print(type(r))
+        # print(r.text)
+        # print(r.keys())
+        # result_id = r.text.split("<result>")[1].split("</result>")[0]
+
+        # uri = self.bulk.endpoint + \
+        #     "/job/%s/batch/%s/result/%s" % (job_id, batch_id, result_id)
+        # r = requests.get(uri, headers=self.bulk.headers(), stream=True)
+
+        if parse_csv:
+            return csv.DictReader(r.iter_lines(chunk_size=2048), delimiter=",",
+                                  quotechar='"')
+        else:
+            return r.iter_lines(chunk_size=2048)
