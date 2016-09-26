@@ -162,7 +162,7 @@ class SFBeatboxConnector:
 
 
 class RESTConnector:
-    def __init__(self, connector_param, default_job=None):
+    def __init__(self, connector_param):
         self.connector_param = connector_param
         self.instance_url = 'https://' + connector_param.url_prefix + 'salesforce.com'
         self.token_url = 'https://' + connector_param.url_prefix + 'salesforce.com/services/oauth2/token'
