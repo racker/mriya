@@ -52,8 +52,6 @@ print(src_data)
 src_ids_list = [old_id['Id'] for old_id in src_data]
 print(src_ids_list)
 
-exit(0)
-
 print('Preparing source and destination')
 if len(src_ids_list) > 0:
    # src_del_res = src.svc.delete(src_ids_list)

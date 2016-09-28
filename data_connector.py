@@ -33,6 +33,71 @@ def get_conn_param(conf_dict):
                            '')
     return param
 
+def conn_param_set_token(conn_param, access_token):
+    assert len(conn_param) == 7
+    new_conn_param_list = list(conn_param)
+    new_conn_param_list[6] = access_token
+    return ConnectorParam._make(new_conn_param_list)
+
+
+class AuthToken(object):
+    def __init__(self, conn_param, cache_file_path):
+        self.conn_param = conn_param
+        self.cache_file_path = cache_file_path
+        self.conn_param = conn_param_set_token(conn_param, self.get_token())
+
+    def conn_param_with_token(self):
+        return self.conn_param
+
+    @staticmethod
+    def oauth2_token(conn_param):
+        req_param = {
+            'grant_type': 'password',
+            'client_id': conn_param.consumer_key,
+            'client_secret': conn_param.consumer_secret,
+            'username': conn_param.username,
+            'password': conn_param.password
+        }
+    
+        token_url_fmt = 'https://{url_prefix}salesforce.com/services/oauth2/token'
+        token_url = token_url_fmt.format(url_prefix=conn_param.url_prefix)
+    
+        result = requests.post(
+            token_url,
+            headers={"Content-Type":"application/x-www-form-urlencoded"},
+            data=req_param)
+        result_dict = loads(result.content)
+        if 'access_token' in result_dict.keys():
+            return result_dict['access_token']
+        else:
+            Exception("Can't obtain oauth token", result_dict)
+
+    def get_token(self):
+        token = self.get_cached_token()
+        if not token:
+            token = AuthToken.oauth2_token(self.conn_param)
+        return token
+
+    def get_cached_token(self):
+        try:
+            tokens_dict = load(open(self.cache_file_path, 'r'))
+        except:
+            return None
+        if self.conn_param.username in tokens_dict.keys():
+            return tokens_dict[self.conn_param.username]
+        else:
+            return None
+
+    def save_token(self):
+        tokens_dict = {}
+        try:
+            tokens_dict = load(open(session_file, 'r'))
+        except:
+            pass
+        tokens_dict[self.connector_param.username] = self.access_token
+        dump(tokens_dict, open(session_file, 'w'))
+        
+
 
 class SFBeatboxConnector:
     def __init__(self, connector_param, batch_size=1000):
@@ -185,7 +250,7 @@ class RESTConnector:
 
     def get_token(self):
         if self.access_token == None:
-            cached_token = self.get_cached_token()
+            cached_token = self.get_cached_token_()
             if cached_token:
                 self.access_token = cached_token
                 if not self.check_token():
@@ -195,7 +260,6 @@ class RESTConnector:
         else:
             self.get_oauth2_token()
         return self.access_token
-
 
     def get_oauth2_token(self):
         req_param = {
@@ -216,7 +280,7 @@ class RESTConnector:
             return None
 
 
-    def get_cached_token(self):
+    def get_cached_token_(self):
         try:
             tokens_dict = load(open(session_file, 'r'))
         except:
@@ -277,6 +341,32 @@ class RESTConnector:
         # do not work should return Id`s of created elements
         # res = self.bulk.get_batch_result_iter(job,batch,parse_csv=False)
         self.bulk.close_job(job)
+
+    def bulk_insert_ids(self, object, data):
+        res = []
+        job = self.bulk.create_insert_job(object, contentType='XML')
+        csv_iter = CsvDictsAdapter(iter(data))
+        batch = self.bulk.post_bulk_batch(job, csv_iter)
+        clock = 0
+        while True:
+            if clock == 10:
+                clock = 0
+                if self.bulk.is_batch_done(job, batch):
+                    break
+            sleep(0.5)
+            clock = clock + 1
+            spin('Wait for job done')
+        self.bulk.wait_for_batch(job, batch)
+        for res_id in self.bulk.get_all_results_for_batch( 
+                batch, job,
+                parse_csv=True, logger=logging.getLogger(__name__)):
+            res.append(res_id)
+        # do not work shuld return Id`s of created elements
+        # res = self.bulk.get_batch_result_iter(job,batch,parse_csv=False)
+        self.bulk.close_job(job)
+        print('\nbulk insert done')
+        return res
+
 
     def bulk_update(self, object, data):
         job = self.bulk.create_update_job(object, contentType='CSV')
