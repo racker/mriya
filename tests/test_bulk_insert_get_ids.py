@@ -51,9 +51,12 @@ def test_insert():
     conn_param = auth_token.conn_param_with_token()
     conn = SfBulkConnector(conn_param)
 
-    datagen = DataGenerator(data_struct, defaults, prefixes)
-    new_data = datagen.gen_data(12, 'Account')
-    csv_data = csv_from_list_of_dicts(new_data)
+    #datagen = DataGenerator(data_struct, defaults, prefixes)
+    #new_data = datagen.gen_data(12, 'Account')
+    #csv_data = csv_from_list_of_dicts(new_data)
+    #print csv_data
+    with open('test.csv') as inp:
+        csv_data = inp.read()
     result_ids = conn.bulk_insert('Account', csv_data)
     print result_ids
 

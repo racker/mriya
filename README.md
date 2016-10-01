@@ -1,7 +1,7 @@
 # mriya
 
 1. 
-export PYTHONPATH=pybulk/sfbulk/
+export PYTHONPATH=pybulk/sfbulk/:.
 
 2. config file
 2.1. Format

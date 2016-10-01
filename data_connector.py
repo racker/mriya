@@ -76,6 +76,7 @@ class AuthToken(object):
         token = self.get_cached_token()
         if not token:
             token = AuthToken.oauth2_token(self.conn_param)
+            self.save_token(token)
         return token
 
     def get_cached_token(self):
@@ -88,13 +89,13 @@ class AuthToken(object):
         else:
             return None
 
-    def save_token(self):
+    def save_token(self, token):
         tokens_dict = {}
         try:
             tokens_dict = load(open(session_file, 'r'))
         except:
             pass
-        tokens_dict[self.connector_param.username] = self.access_token
+        tokens_dict[self.conn_param.username] = token
         dump(tokens_dict, open(session_file, 'w'))
         
 
