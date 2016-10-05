@@ -5,7 +5,7 @@ __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
 from io import BytesIO
-from opexecutor import Executor
+from mriya.opexecutor import Executor
 
 EXPORT_SCRIPT_FMT='create table {name}(id int, field string, field2 string);\n\
 insert into {name} values(1, "hi", "there");\n\

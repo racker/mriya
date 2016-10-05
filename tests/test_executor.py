@@ -4,7 +4,7 @@ __author__ = "Yaroslav Litvinov"
 __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
-from opexecutor import Executor
+from mriya.opexecutor import Executor
 
 def async_engine_assert(stdin_pipe_data):
     expected_order = ['test4.2', 'test4.1']

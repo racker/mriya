@@ -32,6 +32,22 @@ def csv_from_list_of_dicts(list_of_dicts_data):
     csv_writer.close()
     return txt
 
+def csv_from_bulk_data(bulk_data):
+    output = StringIO()
+    csv_writer = CsvWriter(output, False)
+    txt = ''
+    for name in bulk_data.fields:
+        if txt:
+            txt += ','
+        txt += name
+    txt += '\n'
+    csv_writer.write_csv(bulk_data.rows)
+    output.seek(0)
+    txt += output.getvalue()
+    output.close()
+    csv_writer.close()
+    return txt
+
 
 def get_stream_from_csv_rows_list(csv_rows_list):
     istream = StringIO()

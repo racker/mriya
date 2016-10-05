@@ -8,16 +8,16 @@ import logging
 import sys
 from logging import getLogger
 from configparser import ConfigParser
-from data_connector import RESTConnector
-from data_connector import get_conn_param
-from data_connector import conn_param_set_token
-from data_connector import AuthToken
-from test_data_generator import DataGenerator
-from test_data_generator import data_struct
-from test_data_generator import defaults
-from test_data_generator import prefixes
-from sf_bulk_connector import SfBulkConnector
-from bulk_data import csv_from_list_of_dicts
+from mriya.data_connector import RESTConnector
+from mriya.data_connector import get_conn_param
+from mriya.data_connector import conn_param_set_token
+from mriya.data_connector import AuthToken
+from mriya.test_data_generator import DataGenerator
+from mriya.test_data_generator import data_struct
+from mriya.test_data_generator import defaults
+from mriya.test_data_generator import prefixes
+from mriya.sf_bulk_connector import SfBulkConnector
+from mriya.bulk_data import csv_from_list_of_dicts
 
 config_file = 'test-config.ini'
 
