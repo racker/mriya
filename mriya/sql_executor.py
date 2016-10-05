@@ -13,5 +13,3 @@ class SqlExecutor(object):
 
     def execute(self, query):
         raise NotImplementedError("'execute' method not defined!")
-    
-    

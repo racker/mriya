@@ -58,7 +58,8 @@ class SqliteExecutor(SqlExecutor):
                             self.job_syntax_item[QUERY_KEY])
         else:
             self._handle_var_create(res)
-            return res[1]
+            retcode = res[1]
+            return retcode
 
     def _handle_var_create(self, res):
         if VAR_KEY in self.job_syntax_item:

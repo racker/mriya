@@ -14,9 +14,14 @@ CSV_KEY = 'csv'
 DST_KEY = 'dst'
 SRC_KEY = 'src'
 FROM_KEY = 'from' # values 'dst' \ 'src' \ 'csv'
-CSVLIST_KEY = 'csvlist'
-OP_KEY = 'op' # values 'insert' \ 'update'
 QUERY_KEY = 'query'
+
+#only salesforce related
+OP_KEY = 'op' # values 'insert' \ 'update'
+OBJNAME_KEY = 'objname'
+
+# only sqlite related
+CSVLIST_KEY = 'csvlist'
 
 
 class JobSyntax(object):
@@ -86,10 +91,14 @@ class JobSyntax(object):
             if dst_pos != -1:
                 # external sf query
                 values[FROM_KEY] = DST_KEY
+                objname_pos = dst_pos + len(DST_KEY) + 1
+                values[OBJNAME_KEY] = query[objname_pos:].split(' ')[0]
                 break
             elif src_pos != -1:
                 # external sf query
                 values[FROM_KEY] = SRC_KEY
+                objname_pos = src_pos + len(SRC_KEY) + 1
+                values[OBJNAME_KEY] = query[objname_pos:].split(' ')[0]
                 break
             elif csv_pos != -1:
                 # external sqlite csv
@@ -116,8 +125,11 @@ class JobSyntax(object):
         while transm_pos != -1:
             if QUERY_KEY not in values:
                 query = line[start_pos:transm_pos].strip()
-                values[QUERY_KEY] = query.replace(CSV_KEY+'.', '')
                 values = JobSyntax.parse_query_params(query, values)
+                query = query.replace(CSV_KEY+'.', '')
+                query = query.replace(DST_KEY+'.', '')
+                query = query.replace(SRC_KEY+'.', '')
+                values[QUERY_KEY] = query
             start_pos = transm_pos + len(TRANSMITTER)
             values = JobSyntax.parse_transmitter_value(values,
                                                        line[start_pos:])

@@ -13,7 +13,8 @@ from simple_salesforce import Salesforce
 from salesforce_bulk import SalesforceBulk, CsvDictsAdapter
 import requests
 from json import loads, load, dump
-
+from configparser import ConfigParser
+from mriya.sf_bulk_connector import SfBulkConnector
 
 ConnectorParam = namedtuple('ConnectorParam',
                          ['username', 'password', 'url_prefix',
@@ -39,6 +40,16 @@ def conn_param_set_token(conn_param, access_token):
     new_conn_param_list[6] = access_token
     return ConnectorParam._make(new_conn_param_list)
 
+def create_bulk_connector(config_filename, setting_name):
+    config = ConfigParser()
+    with open(config_filename, 'r') as conf_file:
+        config.read_file(conf_file)
+    sessions_file_name = config['DEFAULT']['sessions_file']
+    conn_param = get_conn_param(config[setting_name])
+    auth_token = AuthToken(conn_param, sessions_file_name)
+    conn_param = auth_token.conn_param_with_token()
+    conn = SfBulkConnector(conn_param)
+    return conn
 
 class AuthToken(object):
     def __init__(self, conn_param, cache_file_path):
