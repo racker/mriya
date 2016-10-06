@@ -4,14 +4,18 @@ __author__ = "Yaroslav Litvinov"
 __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
+import logging
+from logging import getLogger
 from mriya.sql_executor import SqlExecutor
 from mriya.job_syntax import CSVLIST_KEY, QUERY_KEY, CSV_KEY, VAR_KEY
 from mriya.opexecutor import Executor
+from mriya.log import loginit
 
 SQLITE_SCRIPT_FMT='.mode csv\n\
+.separator ","\n\
+.nullvalue "#N/A"\n\
 {imports}\n\
 {output}\n\
-.separator ","\n\
 {query}'
 
 
@@ -20,6 +24,9 @@ def observer(refname, retcode, output):
         return (retcode, output.read())
 
 class SqliteExecutor(SqlExecutor):
+    def __init__(self, job_syntax_item, variables):
+        super(SqliteExecutor, self).__init__(job_syntax_item, variables)
+        loginit(__name__)
 
     def _create_script(self, variables):
         imports = ''
@@ -47,6 +54,7 @@ class SqliteExecutor(SqlExecutor):
         executor = Executor()
         cmd = 'sqlite3 -batch'
         script = self._create_script(self.variables)
+        getLogger(__name__).info('Sqlite script:\n%s', script)
         executor.execute('refname', cmd,
                          input_data=script,
                          output_pipe=True)

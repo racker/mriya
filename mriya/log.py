@@ -7,13 +7,14 @@ __email__ = "yaroslav.litvinov@rackspace.com"
 import logging
 import sys
 
-def loginit(logging_level):
-    logging.basicConfig(level=logging_level,
+LOGGING_LEVEL = logging.INFO
+
+def loginit(name):
+    logging.basicConfig(level=LOGGING_LEVEL,
                         stream=sys.stdout,
                         format='%(asctime)s %(levelname)-8s %(message)s')
-    logging.getLogger(__name__).setLevel(logging_level)
-    logging.getLogger(__name__).info("Log created")
-    if logging_level == logging.DEBUG:
+    logging.getLogger(name).setLevel(LOGGING_LEVEL)
+    if LOGGING_LEVEL == logging.DEBUG:
         # These two lines enable debugging at httplib level
         # (requests->urllib3->http.client) You will see the REQUEST,
         # including HEADERS and DATA, and RESPONSE with HEADERS but

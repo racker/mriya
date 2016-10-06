@@ -25,7 +25,7 @@ from mriya.log import loginit
 config_file = 'test-config.ini'
 
 def test_insert():
-    loginit(logging.DEBUG)
+    loginit(__name__)
     config = ConfigParser()
     with open(config_file, 'r') as conf_file:
         config.read_file(conf_file)

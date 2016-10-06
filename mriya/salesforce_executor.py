@@ -25,7 +25,10 @@ class SalesforceExecutor(SqlExecutor):
         getLogger(__name__).info(bulk_res)
         if CSV_KEY in self.job_syntax_item:
             with open(self.job_syntax_item[CSV_KEY]+'.csv', 'w') as csv_f:
+                if not len(bulk_res[-1]):
+                    #ignore last empty results
+                    bulk_res = bulk_res[:-1]
                 for csv_line in bulk_res:
-                    if len(csv_line):
-                        csv_f.write(csv_line)
-                        csv_f.write('\n')
+                    csv_f.write(csv_line)
+                    csv_f.write('\n')
+                csv_f.flush()

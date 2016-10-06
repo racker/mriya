@@ -18,6 +18,10 @@ QUERY_KEY = 'query'
 
 #only salesforce related
 OP_KEY = 'op' # values 'insert' \ 'update'
+OP_VALUE_INSERT = 'insert'
+OP_VALUE_UPSERT = 'upsert'
+OP_VALUE_UPDATE = 'update'
+OP_VALUE_DELETE = 'delete'
 OBJNAME_KEY = 'objname'
 
 # only sqlite related
@@ -143,9 +147,11 @@ class JobSyntax(object):
         key_value = pair.split(':')
         key = key_value[0].strip()
         val = key_value[1].strip()
-        if key == CSV_KEY or key == DST_KEY \
-           or key == SRC_KEY or key == VAR_KEY or key == OP_KEY:
+        if key == CSV_KEY or key == VAR_KEY:
             values[key] = val
+        elif key == DST_KEY or key == SRC_KEY:
+            values[OP_KEY] = val
+            values[key] = key_value[2].strip()
         else:
             print key, val
             assert(0)

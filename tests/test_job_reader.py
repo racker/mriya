@@ -7,6 +7,7 @@ __email__ = "yaroslav.litvinov@rackspace.com"
 import logging
 import os
 from StringIO import StringIO
+from random import randint
 from mriya.job_syntax import JobSyntax
 from mriya.sqlite_executor import SqliteExecutor
 from mriya.job_controller import JobController
@@ -28,8 +29,8 @@ SELECT 1 => var:MIN => dst:foo'
 
 def test_parse():
     lines = ['SELECT 1 => csv:const1',
-             'SELECT 1 => var:MIN => dst:foo => op:insert',
-             'SELECT f1, (SELECT f2 FROM csv.one_ten) as f10 FROM csv.one_ten, 9; => csv:final',
+             'SELECT 1 => var:MIN',
+             'SELECT f1, (SELECT f2 FROM csv.one_ten) as f10 FROM csv.one_ten, 9; => csv:final => dst:insert:foo',
              'SELECT 1 from dst.some_object WHERE b=a => csv:some_csv']
     exp_values1 = {'query': 'SELECT 1',
                    'csv': 'const1'}
@@ -37,15 +38,15 @@ def test_parse():
     logging.getLogger(__name__).info(res_values1)
     assert res_values1 == exp_values1
     exp_values2 = {'query': 'SELECT 1',
-                   'var': 'MIN',
-                   'dst': 'foo',
-                   'op': 'insert'}
+                   'var': 'MIN'}
     res_values2 = JobSyntax.parse_line(lines[1])
     logging.getLogger(__name__).info(res_values2)
     assert res_values2 == exp_values2
     exp_values3 = {'query': 'SELECT f1, (SELECT f2 FROM one_ten) as f10 FROM one_ten, 9;',
                    'csv': 'final',
                    'from': 'csv',
+                   'dst' : 'foo',
+                   'op' : 'insert',
                    'csvlist': ['one_ten']}
     res_values3 = JobSyntax.parse_line(lines[2])
     logging.getLogger(__name__).info(res_values3)
@@ -78,17 +79,26 @@ def test_var_csv():
         assert resulted_file.read() == 'f1,f9,f10\n1,9,10\n'
 
 def test_job_controller():
-    lines = ["SELECT Account_Birthday__c,Name,Id FROM src.Account WHERE Id = '001n0000009bI3MAAU' => csv:some_data"]
+    notch = randint(0, 1000000)
+    lines = ["SELECT Account_Birthday__c,Name,Id FROM src.Account WHERE Id = '001n0000009bI3MAAU' => csv:some_data",
+             "\
+UPDATE csv.some_data SET Account_Birthday__c=null, Name='%d' WHERE Id='001n0000009bI3MAAU'; \
+SELECT Account_Birthday__c,Name,Id FROM csv.some_data WHERE Id = '001n0000009bI3MAAU'; \
+=> csv:some_data_staging => dst:upsert:Account" % notch]
     job_syntax = JobSyntax(lines)
     job_controller = JobController(config_filename,
                                    endpoint_names,
                                    job_syntax)
     job_controller.run_job()
     del job_controller
+    expected_file = "Account_Birthday__c,Name,Id\n#N/A,%d,001n0000009bI3MAAU\n" % notch
+    with open('some_data_staging.csv') as resulted_file:
+        assert expected_file == resulted_file.read()
 
 if __name__ == '__main__':
-    loginit(logging.INFO)
+    loginit(__name__)
     test_read()
     test_parse()
     test_var_csv()
     test_job_controller()
+

@@ -7,21 +7,43 @@ __email__ = "yaroslav.litvinov@rackspace.com"
 
 from mriya.job_syntax import JobSyntax
 from mriya.job_syntax import SQL_TYPE_SQLITE, SQL_TYPE_SF
-from mriya.job_syntax import FROM_KEY
+from mriya.job_syntax import FROM_KEY, OP_KEY, DST_KEY, SRC_KEY
+from mriya.job_syntax import OP_VALUE_UPSERT
 from mriya.sqlite_executor import SqliteExecutor
 from mriya.salesforce_executor import SalesforceExecutor
 from mriya.data_connector import create_bulk_connector
+
+
+class Endpoints(object):
+    def __init__(self, config_filename, endpoint_names):
+        self.config_filename = config_filename
+        self.endpoint_names = endpoint_names
+        self.endpoints = {}
+
+    def __del__(self):
+        del self.endpoints
+
+    def ensure_endpoint_exist(self, endpoint_name):
+        setting_name = self.endpoint_names[endpoint_name]
+        # create endpoint if not created yet
+        if endpoint_name not in self.endpoints:
+            self.endpoints[endpoint_name] = create_bulk_connector(
+                self.config_filename, setting_name)
+
+    def endpoint(self, name):
+        self.ensure_endpoint_exist(name)
+        return self.endpoints[name]
 
 class JobController(object):
 
     def __init__(self, config_filename, endpoint_names, job_syntax):
         self.config_filename = config_filename
         self.job_syntax = job_syntax
-        self.endpoints = [endpoint_names, {}]
+        self.endpoints = Endpoints(config_filename, endpoint_names)
         self.variables = {}
 
     def __del__(self):
-        del self.endpoints[1]
+        del self.endpoints
 
     def create_executor(self, job_syntax_item):
         sql_exec = None
@@ -30,11 +52,8 @@ class JobController(object):
             sql_exec = SqliteExecutor(job_syntax_item, self.variables)
         elif sqltype == SQL_TYPE_SF:
             key_from = job_syntax_item[FROM_KEY]
-            name_from = self.endpoints[0][key_from]
-            if key_from not in self.endpoints[1]:
-                self.endpoints[1][key_from] = create_bulk_connector(
-                    self.config_filename, name_from)
-            sql_exec = SalesforceExecutor(self.endpoints[1][key_from],
+            conn = self.endpoints.endpoint(key_from)
+            sql_exec = SalesforceExecutor(conn,
                                           job_syntax_item,
                                           self.variables)
         return sql_exec
@@ -45,3 +64,9 @@ class JobController(object):
             sql_exec.execute()
             self.variables = sql_exec.variables
             del sql_exec
+
+    def post_operation(self, job_syntax_item):
+        if job_syntax_item[DST_KEY] or job_syntax_item[SRC_KEY]:
+            if job_syntax_item[OP_KEY] == 'upsert':
+                pass
+
