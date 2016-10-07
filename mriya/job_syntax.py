@@ -18,10 +18,10 @@ QUERY_KEY = 'query'
 
 #only salesforce related
 OP_KEY = 'op' # values 'insert' \ 'update'
-OP_VALUE_INSERT = 'insert'
-OP_VALUE_UPSERT = 'upsert'
-OP_VALUE_UPDATE = 'update'
-OP_VALUE_DELETE = 'delete'
+OP_INSERT = 'insert'
+OP_UPSERT = 'upsert'
+OP_UPDATE = 'update'
+OP_DELETE = 'delete'
 OBJNAME_KEY = 'objname'
 
 # only sqlite related

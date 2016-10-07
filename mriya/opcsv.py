@@ -18,7 +18,7 @@ from collections import namedtuple
 NULLVAL = '\N'
 ESCAPECHAR = '\\'
 DELIMITER = ','
-LINETERMINATOR = '\r\n'
+LINETERMINATOR = '\n'
 DOUBLEQUOTE = True
 QUOTING = csv.QUOTE_ALL
 

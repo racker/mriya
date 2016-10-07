@@ -5,10 +5,12 @@ __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
 
+from logging import getLogger
+from mriya.log import loginit
 from mriya.job_syntax import JobSyntax
 from mriya.job_syntax import SQL_TYPE_SQLITE, SQL_TYPE_SF
-from mriya.job_syntax import FROM_KEY, OP_KEY, DST_KEY, SRC_KEY
-from mriya.job_syntax import OP_VALUE_UPSERT
+from mriya.job_syntax import FROM_KEY, OP_KEY, DST_KEY, SRC_KEY, CSV_KEY
+from mriya.job_syntax import OP_UPSERT, OP_INSERT, OP_UPDATE
 from mriya.sqlite_executor import SqliteExecutor
 from mriya.salesforce_executor import SalesforceExecutor
 from mriya.data_connector import create_bulk_connector
@@ -37,6 +39,7 @@ class Endpoints(object):
 class JobController(object):
 
     def __init__(self, config_filename, endpoint_names, job_syntax):
+        loginit(__name__)
         self.config_filename = config_filename
         self.job_syntax = job_syntax
         self.endpoints = Endpoints(config_filename, endpoint_names)
@@ -62,11 +65,32 @@ class JobController(object):
         for job_syntax_item in self.job_syntax:
             sql_exec = self.create_executor(job_syntax_item)
             sql_exec.execute()
+            self.post_operation(job_syntax_item)
             self.variables = sql_exec.variables
             del sql_exec
 
     def post_operation(self, job_syntax_item):
-        if job_syntax_item[DST_KEY] or job_syntax_item[SRC_KEY]:
-            if job_syntax_item[OP_KEY] == 'upsert':
-                pass
+        print job_syntax_item
+        endpoint = None
+        if DST_KEY in job_syntax_item:
+            endpoint = DST_KEY
+        if SRC_KEY in job_syntax_item:
+            endpoint = SRC_KEY
+
+        if endpoint and \
+           (job_syntax_item[OP_KEY] == OP_UPSERT or \
+            job_syntax_item[OP_KEY] == OP_INSERT or \
+            job_syntax_item[OP_KEY] == OP_UPDATE):
+            csv_data = None
+            csv_filename = job_syntax_item[CSV_KEY] + '.csv'
+            with open(csv_filename) as csv_f:
+                csv_data = csv_f.read()
+            objname = job_syntax_item[endpoint]
+            conn = self.endpoints.endpoint(endpoint)
+            getLogger(__name__).info('objname %s, csv %s',
+                                     objname, csv_data)
+            if job_syntax_item[OP_KEY] == OP_UPDATE:
+                conn.bulk_update(objname, csv_data)
+            getLogger(__name__).info('Done: %s operation',
+                                     job_syntax_item[OP_KEY])
 

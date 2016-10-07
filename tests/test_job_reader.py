@@ -80,18 +80,18 @@ def test_var_csv():
 
 def test_job_controller():
     notch = randint(0, 1000000)
-    lines = ["SELECT Account_Birthday__c,Name,Id FROM src.Account WHERE Id = '001n0000009bI3MAAU' => csv:some_data",
+    lines = ["SELECT Id,Account_Birthday__c,Name FROM src.Account WHERE Id = '001n0000009bI3MAAU' => csv:some_data",
              "\
 UPDATE csv.some_data SET Account_Birthday__c=null, Name='%d' WHERE Id='001n0000009bI3MAAU'; \
-SELECT Account_Birthday__c,Name,Id FROM csv.some_data WHERE Id = '001n0000009bI3MAAU'; \
-=> csv:some_data_staging => dst:upsert:Account" % notch]
+SELECT Id,Account_Birthday__c,Name FROM csv.some_data WHERE Id = '001n0000009bI3MAAU'; \
+=> csv:some_data_staging => dst:update:Account" % notch]
     job_syntax = JobSyntax(lines)
     job_controller = JobController(config_filename,
                                    endpoint_names,
                                    job_syntax)
     job_controller.run_job()
     del job_controller
-    expected_file = "Account_Birthday__c,Name,Id\n#N/A,%d,001n0000009bI3MAAU\n" % notch
+    expected_file = "Id,Account_Birthday__c,Name\n001n0000009bI3MAAU,#N/A,%d\n" % notch
     with open('some_data_staging.csv') as resulted_file:
         assert expected_file == resulted_file.read()
 

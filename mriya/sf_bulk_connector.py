@@ -3,10 +3,11 @@ __author__ = "Yaroslav Litvinov"
 __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
-from base_connector import BaseBulkConnector
 from sfbulk import Bulk
 from logging import getLogger, DEBUG
 from time import sleep
+from mriya.base_connector import BaseBulkConnector
+from mriya.bulk_data import parse_batch_res_data
 
 class SfBulkConnector(BaseBulkConnector):
 
@@ -20,50 +21,63 @@ class SfBulkConnector(BaseBulkConnector):
                         #sf_version=38.0,
                         sandbox=True)
 
-    def handle_batch_exception(self, batch_id):
-        """ Handle critical bulk error, when no records processed """
+    def handle_batch_error(self, batch_id):
+        """ Handle bulk error, when no records processed """
         batch_res = None
         if batch_id in self.bulk.jobinfo.batch:
             info = self.bulk.jobinfo.batch[batch_id]
             if info['state'] != 'Completed':
-                raise Exception('bachFailed %s' % batch_id,
-                                info['stateMessage'])
-        else:
-            assert(0)
+                getLogger(__name__).error('%s bachFailed %s',
+                                          batch_id,
+                                          info['stateMessage'])
+
+    def handle_op_returning_ids(self, opname, res):
+        batch = res[0]
+        batch_res = res[1]
+        result_ids = parse_batch_res_data(batch_res)
+        id_idx = result_ids.fields.index('Id')
+        success_idx = result_ids.fields.index('Success')
+        for item in result_ids.rows:
+            if item[success_idx] != 'true':
+                getLogger(__name__).error('Batch %s: Id=%s failed to %s',
+                                          batch, item[id_idx], opname)
+
+    def bulk_common_(self, op, objname, soql_or_csv):
+        # create job
+        self.bulk.job_create(op, objname)
+        
+        # create batch
+        batch_id = self.bulk.batch_create(soql_or_csv)
+        
+        # wait until job is completed
+        while (not self.bulk.job_is_completed()):
+            sleep(5)
+
+        self.handle_batch_error(batch_id)
+        batch_res = self.bulk.batch_result()[batch_id]
+
+        # close job
+        self.bulk.job_close()
+        
+        return (batch_id, batch_res)
 
     def bulk_insert(self, objname, csv_data):
-        # create job
-        self.bulk.job_create('insert', objname)
-        
-        # create batch
-        self.bulk.batch_create(csv_data)
-        
-        # wait until job is completed
-        while (not self.bulk.job_is_completed()):
-            sleep(5)
-        
-        res = self.bulk.batch_result()
+        res = self.bulk_common_('insert', objname, csv_data)
+        self.handle_op_returning_ids('insert', res)
+        return res[1]
 
-        # close job
-        self.bulk.job_close()
-        
-        return res
+    def bulk_upsert(self, objname, csv_data):
+        res = self.bulk_common_('upsert', objname, csv_data)
+        self.handle_op_returning_ids('upsert', res)
+        return res[1]
+
+
+    def bulk_update(self, objname, csv_data):
+        res = self.bulk_common_('update', objname, csv_data)
+        self.handle_op_returning_ids('update', res)
+        return res[1]
 
     def bulk_load(self, objname, soql):
-        # create job
-        self.bulk.job_create('query', objname)
-        
-        # create batch
-        batch_id = self.bulk.batch_create(soql)
-        
-        # wait until job is completed
-        while (not self.bulk.job_is_completed()):
-            sleep(5)
-        
-        self.handle_batch_exception(batch_id)
-        batch_res = self.bulk.batch_result()[batch_id]
-        # close job
-        self.bulk.job_close()
-
-        return batch_res
+        res = self.bulk_common_('query', objname, soql)
+        return res[1]
 
