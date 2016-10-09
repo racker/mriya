@@ -16,6 +16,9 @@ SRC_KEY = 'src'
 FROM_KEY = 'from' # values 'dst' \ 'src' \ 'csv'
 QUERY_KEY = 'query'
 
+BATCH_BEGIN_KEY = 'batch_begin'
+BATCH_END_KEY = 'batch_end'
+
 #only salesforce related
 OP_KEY = 'op' # values 'insert' \ 'update'
 OP_INSERT = 'insert'
@@ -150,8 +153,14 @@ class JobSyntax(object):
         if key == CSV_KEY or key == VAR_KEY:
             values[key] = val
         elif key == DST_KEY or key == SRC_KEY:
+            val2 = key_value[2].strip()
             values[OP_KEY] = val
-            values[key] = key_value[2].strip()
+            values[key] = val2
+        elif key == BATCH_BEGIN_KEY:
+            val2 = key_value[2].strip()
+            values[key] = (val, val2)
+        elif key == BATCH_END_KEY:
+            values[key] = val
         else:
             print key, val
             assert(0)

@@ -27,38 +27,33 @@ SELECT 1 => var:MIN => dst:foo'
     assert lines == ['SELECT 1 => csv:const1',
                      'SELECT 1 => var:MIN => dst:foo']
 
+
 def test_parse():
     lines = ['SELECT 1 => csv:const1',
              'SELECT 1 => var:MIN',
              'SELECT f1, (SELECT f2 FROM csv.one_ten) as f10 FROM csv.one_ten, 9; => csv:final => dst:insert:foo',
-             'SELECT 1 from dst.some_object WHERE b=a => csv:some_csv']
-    exp_values1 = {'query': 'SELECT 1',
-                   'csv': 'const1'}
-    res_values1 = JobSyntax.parse_line(lines[0])
-    logging.getLogger(__name__).info(res_values1)
-    assert res_values1 == exp_values1
-    exp_values2 = {'query': 'SELECT 1',
-                   'var': 'MIN'}
-    res_values2 = JobSyntax.parse_line(lines[1])
-    logging.getLogger(__name__).info(res_values2)
-    assert res_values2 == exp_values2
-    exp_values3 = {'query': 'SELECT f1, (SELECT f2 FROM one_ten) as f10 FROM one_ten, 9;',
-                   'csv': 'final',
-                   'from': 'csv',
-                   'dst' : 'foo',
-                   'op' : 'insert',
-                   'csvlist': ['one_ten']}
-    res_values3 = JobSyntax.parse_line(lines[2])
-    logging.getLogger(__name__).info(res_values3)
-    assert res_values3 == exp_values3
-    exp_values4 = {'query': 'SELECT 1 from some_object WHERE b=a',
-                   'csv': 'some_csv',
-                   'from': 'dst',
-                   'objname': 'some_object'}
-    res_values4 = JobSyntax.parse_line(lines[3])
-    print res_values4
-    logging.getLogger(__name__).info(res_values4)
-    assert res_values4 == exp_values4
+             'SELECT 1 as bacth1 from csv.some_csv; => batch_begin:batch1:BATCH',
+             'SELECT 1 from dst.some_object WHERE b=a => csv:some_csv => batch_end:',
+             ]
+    expected = [
+        {'query': 'SELECT 1', 'csv': 'const1'},
+        {'query': 'SELECT 1', 'var': 'MIN'},
+        {'query': 'SELECT f1, (SELECT f2 FROM one_ten) as f10 FROM one_ten, 9;',
+         'csv': 'final', 'from': 'csv', 'dst' : 'foo', 'op' : 'insert',
+         'csvlist': ['one_ten']},
+        {'query': 'SELECT 1 as bacth1 from some_csv;',
+         'batch_begin': ('batch1', 'BATCH'), 'from': 'csv',
+         'csvlist': ['some_csv']},
+        {'query': 'SELECT 1 from some_object WHERE b=a',
+         'csv': 'some_csv', 'from': 'dst', 'objname': 'some_object',
+         'batch_end': ''}
+    ]
+    assert len(lines) == len(expected)
+    for idx in xrange(len(lines)):
+        res = JobSyntax.parse_line(lines[idx])
+        exp = expected[idx]
+        logging.getLogger(__name__).info('idx: %d, res=%s', idx, res)
+        assert res == exp
 
 def test_var_csv():
     lines = ['SELECT 1; => var:one',
