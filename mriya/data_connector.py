@@ -40,10 +40,7 @@ def conn_param_set_token(conn_param, access_token):
     new_conn_param_list[6] = access_token
     return ConnectorParam._make(new_conn_param_list)
 
-def create_bulk_connector(config_filename, setting_name):
-    config = ConfigParser()
-    with open(config_filename, 'r') as conf_file:
-        config.read_file(conf_file)
+def create_bulk_connector(config, setting_name):
     sessions_file_name = config['DEFAULT']['sessions_file']
     conn_param = get_conn_param(config[setting_name])
     auth_token = AuthToken(conn_param, sessions_file_name)

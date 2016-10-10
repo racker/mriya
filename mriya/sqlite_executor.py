@@ -5,10 +5,13 @@ __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
 import logging
+from StringIO import StringIO
 from logging import getLogger
 from mriya.sql_executor import SqlExecutor
 from mriya.job_syntax import CSVLIST_KEY, QUERY_KEY, CSV_KEY, VAR_KEY
+from mriya.job_syntax import BATCH_BEGIN_KEY, BATCH_PARAMS_KEY
 from mriya.opexecutor import Executor
+from mriya.bulk_data import get_bulk_data_from_csv_stream
 from mriya.log import loginit
 
 SQLITE_SCRIPT_FMT='.mode csv\n\
@@ -42,9 +45,13 @@ class SqliteExecutor(SqlExecutor):
         elif VAR_KEY in self.job_syntax_item:
             output += ".headers off\n"
             output += ".output stdout\n"
+        elif BATCH_BEGIN_KEY in self.job_syntax_item:
+            output += ".headers on\n"
+            output += ".output stdout\n"
         query = self.job_syntax_item[QUERY_KEY]
         for var_name, var_value in variables.iteritems():
-            query = query.replace('{%s}' % (var_name), var_value)
+            if type(var_value) != list:
+                query = query.replace('{%s}' % (var_name), var_value)
         input_data = SQLITE_SCRIPT_FMT.format(imports=imports,
                                               output=output,
                                               query=query)
@@ -72,4 +79,10 @@ class SqliteExecutor(SqlExecutor):
     def _handle_var_create(self, res):
         if VAR_KEY in self.job_syntax_item:
             self.variables[self.job_syntax_item[VAR_KEY]] = res[1].strip()
-
+        elif BATCH_BEGIN_KEY in self.job_syntax_item:
+            param_field_name = self.job_syntax_item[BATCH_BEGIN_KEY][0]
+            stream = StringIO(res[1])
+            csv_batch_params =  get_bulk_data_from_csv_stream(stream)
+            field_idx = csv_batch_params.fields.index(param_field_name)
+            values = [x[field_idx] for x in csv_batch_params.rows]
+            self.variables[BATCH_PARAMS_KEY] = values

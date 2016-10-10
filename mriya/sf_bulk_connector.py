@@ -9,6 +9,8 @@ from time import sleep
 from mriya.base_connector import BaseBulkConnector
 from mriya.bulk_data import parse_batch_res_data
 
+#IGNORE_SF_RESPONSE = 'Records not found for this query'
+
 class SfBulkConnector(BaseBulkConnector):
 
     def __init__(self, conn_param):
@@ -37,10 +39,12 @@ class SfBulkConnector(BaseBulkConnector):
         result_ids = parse_batch_res_data(batch_res)
         id_idx = result_ids.fields.index('Id')
         success_idx = result_ids.fields.index('Success')
+        error_idx = result_ids.fields.index('Error')
         for item in result_ids.rows:
             if item[success_idx] != 'true':
-                getLogger(__name__).error('Batch %s: Id=%s failed to %s',
-                                          batch, item[id_idx], opname)
+                getLogger(__name__).error('Batch %s %s: Id=%s, error:%s',
+                                          batch, opname, item[id_idx],
+                                          item[error_idx])
 
     def bulk_common_(self, op, objname, soql_or_csv):
         # create job
@@ -55,7 +59,8 @@ class SfBulkConnector(BaseBulkConnector):
 
         self.handle_batch_error(batch_id)
         batch_res = self.bulk.batch_result()[batch_id]
-
+        #if batch_res == [IGNORE_SF_RESPONSE]:
+        #    batch_res= []
         # close job
         self.bulk.job_close()
         

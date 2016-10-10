@@ -4,7 +4,6 @@ __author__ = "Yaroslav Litvinov"
 __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
-
 SQL_TYPE_SQLITE = 'sqlite'
 SQL_TYPE_SF = 'salesforce'
 
@@ -16,6 +15,7 @@ SRC_KEY = 'src'
 FROM_KEY = 'from' # values 'dst' \ 'src' \ 'csv'
 QUERY_KEY = 'query'
 
+BATCH_PARAMS_KEY = 'batch_params'
 BATCH_BEGIN_KEY = 'batch_begin'
 BATCH_END_KEY = 'batch_end'
 
