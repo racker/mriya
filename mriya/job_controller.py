@@ -74,6 +74,8 @@ class JobController(object):
         batch_items = None
         batch = None
         for job_syntax_item in self.job_syntax:
+            if not job_syntax_item:
+                continue
             if not batch:
                 self.handle_job_item_(job_syntax_item)
             else:

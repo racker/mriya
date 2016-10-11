@@ -16,6 +16,10 @@ class SalesforceExecutor(SqlExecutor):
     def execute(self):
         objname = self.job_syntax_item[OBJNAME_KEY]
         soql_query = self.job_syntax_item[QUERY_KEY]
+        for var_name, var_value in self.variables.iteritems():
+            if type(var_value) != list:
+                soql_query = soql_query.replace('{%s}' % (var_name),
+                                                var_value)
         bulk_res = self.conn.bulk_load(objname, soql_query)
         self.handle_result(bulk_res)
         retcode = 0
