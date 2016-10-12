@@ -39,7 +39,8 @@ def test_parse():
              'SELECT 1 as bacth1 from csv.some_csv; => batch_begin:batch1:BATCH',
              'SELECT 1 from dst.some_object WHERE b=a => csv:some_csv => batch_end:',
              '=> batch_end:',
-             ]
+             'SELECT 1 as test, 2 as test2; => csv:foo => dst:insert:test_table:new_ids',
+             'SELECT 1 as test, 2 as test2; => csv:foo => dst:insert:test_table']
     expected = [
         {},
         {'query': 'SELECT 1', 'csv': 'const1'},
@@ -53,7 +54,12 @@ def test_parse():
         {'query': 'SELECT 1 from some_object WHERE b=a',
          'csv': 'some_csv', 'from': 'dst', 'objname': 'some_object',
          'batch_end': ''},
-        {'query': '', 'batch_end': ''}
+        {'query': '', 'batch_end': ''},
+        {'query': 'SELECT 1 as test, 2 as test2;',
+         'op': 'insert', 'dst' : 'test_table', 'csv': 'foo',
+         'new_ids_table': 'new_ids'},
+        {'query': 'SELECT 1 as test, 2 as test2;', 'csv': 'foo',
+         'op': 'insert', 'dst' : 'test_table'}
     ]
     assert len(lines) == len(expected)
     for idx in xrange(len(lines)):
@@ -65,6 +71,7 @@ def test_parse():
 def test_var_csv():
     lines = ['SELECT 1; => var:one',
              'SELECT 9; => var:nine',
+             'SELECT Id FROM src.Account LIMIT 1 => var:sfvar',
              'SELECT {one} as f1, {nine}+1 as f2; => csv:one_ten',
              'SELECT f1, {nine} as f9, (SELECT f2 FROM csv.one_ten) as f10 FROM csv.one_ten; => csv:one_nine_ten',
              'CREATE TABLE test_params(test int); INSERT INTO test_params VALUES(2); INSERT INTO test_params VALUES(3); SELECT test from test_params; => batch_begin:test:PARAM',
@@ -83,8 +90,9 @@ def test_var_csv():
                                        job_syntax)
     job_controller.run_job()
     res_batch_params = job_controller.variables[BATCH_PARAMS_KEY]
-    print job_controller.variables
     assert res_batch_params == ['2', '3']
+    sfvar = job_controller.variables['sfvar']
+    assert len(sfvar) == 18
     final_param = job_controller.variables['final_test']
     assert final_param == '3'
     del job_controller
@@ -95,6 +103,7 @@ def test_job_controller():
     notch = randint(0, 1000000)
     lines = ["SELECT Id,Account_Birthday__c,Name FROM src.Account LIMIT 1 => csv:some_data",
              "SELECT Id from csv.some_data; => var:id_test",
+             "SELECT Account_Birthday__c,Name FROM csv.some_data; => csv:some_data_staging => dst:insert:Account:newids",
              "UPDATE csv.some_data SET Account_Birthday__c=null, Name='%d'; \
              SELECT Id,Account_Birthday__c,Name FROM csv.some_data \
 WHERE Id = '{id_test}'; \

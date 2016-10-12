@@ -111,25 +111,24 @@ class JobController(object):
             endpoint = SRC_KEY
 
         if endpoint:
-            if job_syntax_item[OP_KEY] == OP_UPSERT or \
-               job_syntax_item[OP_KEY] == OP_INSERT or \
-               job_syntax_item[OP_KEY] == OP_UPDATE:
+            opname = job_syntax_item[OP_KEY]
+            if opname == OP_UPSERT or opname == OP_INSERT or \
+               opname == OP_UPDATE:
                 csv_data = None
                 csv_filename = job_syntax_item[CSV_KEY] + '.csv'
                 with open(csv_filename) as csv_f:
                     csv_data = csv_f.read()
                 objname = job_syntax_item[endpoint]
                 conn = self.endpoints.endpoint(endpoint)
-                getLogger(__name__).info('objname %s, csv %s',
-                                         objname, csv_data)
-                if job_syntax_item[OP_KEY] == OP_UPDATE:
+                getLogger(__name__).info('EXECUTE: %s sf records count=%d',
+                                         opname, len(csv_data))
+                if opname == OP_UPDATE:
                     conn.bulk_update(objname, csv_data)
-                elif job_syntax_item[OP_KEY] == OP_INSERT:
+                elif opname == OP_INSERT:
                     conn.bulk_insert(objname, csv_data)
-                getLogger(__name__).info('Done: %s operation',
-                                         job_syntax_item[OP_KEY])
+                getLogger(__name__).info('Done: %s operation', opname)
             else:
                 getLogger(__name__).error('Unsupported operation: %s',
-                                          job_syntax_item[OP_KEY])
+                                          opname)
                 assert(0)
 

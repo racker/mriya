@@ -48,10 +48,7 @@ class SqliteExecutor(SqlExecutor):
         elif BATCH_BEGIN_KEY in self.job_syntax_item:
             output += ".headers on\n"
             output += ".output stdout\n"
-        query = self.job_syntax_item[QUERY_KEY]
-        for var_name, var_value in variables.iteritems():
-            if type(var_value) != list:
-                query = query.replace('{%s}' % (var_name), var_value)
+        query = self.prepare_query_put_vars(self.job_syntax_item[QUERY_KEY])
         input_data = SQLITE_SCRIPT_FMT.format(imports=imports,
                                               output=output,
                                               query=query)
@@ -61,7 +58,7 @@ class SqliteExecutor(SqlExecutor):
         executor = Executor()
         cmd = 'sqlite3 -batch'
         script = self._create_script(self.variables)
-        getLogger(__name__).info('Sqlite script:\n%s', script)
+        getLogger(__name__).debug('Sqlite script:\n%s', script)
         executor.execute('refname', cmd,
                          input_data=script,
                          output_pipe=True)
@@ -78,7 +75,8 @@ class SqliteExecutor(SqlExecutor):
 
     def _handle_var_create(self, res):
         if VAR_KEY in self.job_syntax_item:
-            self.variables[self.job_syntax_item[VAR_KEY]] = res[1].strip()
+            self.save_var_as_query_results(self.job_syntax_item[VAR_KEY],
+                                           res[1].strip())
         elif BATCH_BEGIN_KEY in self.job_syntax_item:
             param_field_name = self.job_syntax_item[BATCH_BEGIN_KEY][0]
             stream = StringIO(res[1])

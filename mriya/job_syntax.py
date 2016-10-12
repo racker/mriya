@@ -26,6 +26,7 @@ OP_UPSERT = 'upsert'
 OP_UPDATE = 'update'
 OP_DELETE = 'delete'
 OBJNAME_KEY = 'objname'
+NEW_IDS_TABLE = 'new_ids_table'
 
 # only sqlite related
 CSVLIST_KEY = 'csvlist'
@@ -34,6 +35,7 @@ CSVLIST_KEY = 'csvlist'
 class JobSyntax(object):
 
     def __init__(self, raw_lines):
+        raw_lines = JobSyntax.prepare_lines(raw_lines)
         self.values = self.parse_lines(raw_lines)
 
     def __iter__(self):
@@ -61,7 +63,7 @@ class JobSyntax(object):
         current_line = ''
         for line in lines:
             strip_line = line.strip()
-            if strip_line[-1] == '\\':
+            if strip_line and strip_line[-1] == '\\':
                 current_line += strip_line[:-1]
             else:
                 if current_line:
@@ -153,9 +155,11 @@ class JobSyntax(object):
         if key == CSV_KEY or key == VAR_KEY:
             values[key] = val
         elif key == DST_KEY or key == SRC_KEY:
-            val2 = key_value[2].strip()
+            objname_val = key_value[2].strip()
             values[OP_KEY] = val
-            values[key] = val2
+            values[key] = objname_val
+            if val == OP_INSERT and len(key_value) > 3:
+                values[NEW_IDS_TABLE] = key_value[3].strip()
         elif key == BATCH_BEGIN_KEY:
             val2 = key_value[2].strip()
             values[key] = (val, val2)
