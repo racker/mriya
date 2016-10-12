@@ -12,10 +12,11 @@ from mriya.job_syntax import SQL_TYPE_SQLITE, SQL_TYPE_SF
 from mriya.job_syntax import FROM_KEY, OP_KEY, DST_KEY, SRC_KEY, CSV_KEY
 from mriya.job_syntax import OP_UPSERT, OP_INSERT, OP_UPDATE
 from mriya.job_syntax import BATCH_BEGIN_KEY, BATCH_END_KEY, BATCH_PARAMS_KEY
+from mriya.job_syntax import NEW_IDS_TABLE
 from mriya.sqlite_executor import SqliteExecutor
 from mriya.salesforce_executor import SalesforceExecutor
 from mriya.data_connector import create_bulk_connector
-
+from mriya.bulk_data import csv_from_bulk_data, parse_batch_res_data
 
 class Endpoints(object):
     def __init__(self, config, endpoint_names):
@@ -120,12 +121,18 @@ class JobController(object):
                     csv_data = csv_f.read()
                 objname = job_syntax_item[endpoint]
                 conn = self.endpoints.endpoint(endpoint)
-                getLogger(__name__).info('EXECUTE: %s sf records count=%d',
+                getLogger(__name__).info('EXECUTE: op:%s, Csv data size=%d',
                                          opname, len(csv_data))
                 if opname == OP_UPDATE:
                     conn.bulk_update(objname, csv_data)
                 elif opname == OP_INSERT:
-                    conn.bulk_insert(objname, csv_data)
+                    res = conn.bulk_insert(objname, csv_data)
+                    result_ids = parse_batch_res_data(res)
+                    results_file_name = job_syntax_item[NEW_IDS_TABLE] \
+                                        + '.csv'
+                    with open(results_file_name, 'w') as result_ids_file:
+                        csv_data = csv_from_bulk_data(result_ids)
+                        result_ids_file.write(csv_data)
                 getLogger(__name__).info('Done: %s operation', opname)
             else:
                 getLogger(__name__).error('Unsupported operation: %s',

@@ -101,8 +101,8 @@ def test_var_csv():
 
 def test_job_controller():
     notch = randint(0, 1000000)
-    lines = ["SELECT Id,Account_Birthday__c,Name FROM src.Account LIMIT 1 => csv:some_data",
-             "SELECT Id from csv.some_data; => var:id_test",
+    lines = ["SELECT Id,Account_Birthday__c,Name FROM src.Account LIMIT 2 => csv:some_data",
+             "SELECT Id from csv.some_data LIMIT 1; => var:id_test",
              "SELECT Account_Birthday__c,Name FROM csv.some_data; => csv:some_data_staging => dst:insert:Account:newids",
              "UPDATE csv.some_data SET Account_Birthday__c=null, Name='%d'; \
              SELECT Id,Account_Birthday__c,Name FROM csv.some_data \
@@ -119,9 +119,15 @@ WHERE Id = '{id_test}'; \
     del job_controller
     with open('some_data_staging.csv') as resulted_file:
         csv_data = get_bulk_data_from_csv_stream(resulted_file)
-        id_idx = csv_data.fields.index('Name')
+        name_idx = csv_data.fields.index('Name')
         assert 1 == len(csv_data.rows)
-        assert csv_data.rows[0][id_idx] == str(notch)
+        assert csv_data.rows[0][name_idx] == str(notch)
+    with open('newids.csv') as newids_file:
+        csv_data = get_bulk_data_from_csv_stream(newids_file)
+        id_idx = csv_data.fields.index('Id')
+        assert 2 == len(csv_data.rows)
+        for row in csv_data.rows:
+            assert len(row[id_idx]) == 18
 
 if __name__ == '__main__':
     loginit(__name__)
