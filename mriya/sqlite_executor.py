@@ -49,6 +49,7 @@ class SqliteExecutor(SqlExecutor):
             output += ".headers on\n"
             output += ".output stdout\n"
         query = self.prepare_query_put_vars(self.job_syntax_item[QUERY_KEY])
+        getLogger(__name__).info('EXECUTE: %s', query)
         input_data = SQLITE_SCRIPT_FMT.format(imports=imports,
                                               output=output,
                                               query=query)

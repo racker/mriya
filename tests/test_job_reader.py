@@ -135,5 +135,5 @@ if __name__ == '__main__':
     test_read()
     test_parse()
     test_var_csv()
-    #test_job_controller()
+    test_job_controller()
 

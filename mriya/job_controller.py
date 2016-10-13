@@ -12,7 +12,7 @@ from mriya.job_syntax import SQL_TYPE_SQLITE, SQL_TYPE_SF
 from mriya.job_syntax import FROM_KEY, OP_KEY, DST_KEY, SRC_KEY, CSV_KEY
 from mriya.job_syntax import OP_UPSERT, OP_INSERT, OP_UPDATE
 from mriya.job_syntax import BATCH_BEGIN_KEY, BATCH_END_KEY, BATCH_PARAMS_KEY
-from mriya.job_syntax import NEW_IDS_TABLE
+from mriya.job_syntax import NEW_IDS_TABLE, QUERY_KEY
 from mriya.sqlite_executor import SqliteExecutor
 from mriya.salesforce_executor import SalesforceExecutor
 from mriya.data_connector import create_bulk_connector
@@ -61,6 +61,7 @@ class JobController(object):
     def create_executor(self, job_syntax_item):
         sql_exec = None
         sqltype = JobSyntax.sqltype(job_syntax_item)
+        getLogger(__name__).debug(job_syntax_item)
         if sqltype == SQL_TYPE_SQLITE:
             sql_exec = SqliteExecutor(job_syntax_item, self.variables)
         elif sqltype == SQL_TYPE_SF:
@@ -72,7 +73,8 @@ class JobController(object):
         return sql_exec
 
     def handle_job_item_(self, job_syntax_item):
-        if job_syntax_item:
+        if job_syntax_item and QUERY_KEY in job_syntax_item \
+           and job_syntax_item[QUERY_KEY].strip():
             sql_exec = self.create_executor(job_syntax_item)
             sql_exec.execute()
             self.post_operation(job_syntax_item)
