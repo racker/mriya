@@ -36,6 +36,10 @@ def add_args(parser):
 
 
 if __name__ == '__main__':
+    # workaround for UnicodeDecodeError
+    import sys  
+    reload(sys)  
+    sys.setdefaultencoding('utf8')
     loginit(__name__)
     parser = argparse.ArgumentParser()
     parser = add_args(parser)

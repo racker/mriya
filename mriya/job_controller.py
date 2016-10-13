@@ -18,6 +18,8 @@ from mriya.salesforce_executor import SalesforceExecutor
 from mriya.data_connector import create_bulk_connector
 from mriya.bulk_data import csv_from_bulk_data, parse_batch_res_data
 
+INTS_TABLE = 'ints10000.csv'
+
 class Endpoints(object):
     def __init__(self, config, endpoint_names):
         self.config = config
@@ -46,6 +48,12 @@ class JobController(object):
         self.job_syntax = job_syntax
         self.endpoints = Endpoints(config, endpoint_names)
         self.variables = {}
+        # create csv file for an internal batch purpose
+        with open(INTS_TABLE, 'w') as ints:
+            ints.write('i\n')
+            for i in xrange(10001):
+                ints.write('%d\n' % i)
+
 
     def __del__(self):
         del self.endpoints
@@ -99,11 +107,12 @@ class JobController(object):
 
     def get_batch_param_name(self, batch, job_syntax_item):
         if BATCH_BEGIN_KEY in job_syntax_item:
+            field = job_syntax_item[BATCH_BEGIN_KEY][0]
             batch = job_syntax_item[BATCH_BEGIN_KEY][1]
         elif BATCH_END_KEY in job_syntax_item:
             batch = None
         return batch
-
+        
     def post_operation(self, job_syntax_item):
         endpoint = None
         if DST_KEY in job_syntax_item:

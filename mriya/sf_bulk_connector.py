@@ -47,24 +47,27 @@ class SfBulkConnector(BaseBulkConnector):
                                           item[error_idx])
 
     def bulk_common_(self, op, objname, soql_or_csv):
-        # create job
-        self.bulk.job_create(op, objname)
+        try:
+            # create job
+            self.bulk.job_create(op, objname)
         
-        # create batch
-        batch_id = self.bulk.batch_create(soql_or_csv)
+            # create batch
+            batch_id = self.bulk.batch_create(soql_or_csv)
         
-        # wait until job is completed
-        while (not self.bulk.job_is_completed()):
-            sleep(5)
+            # wait until job is completed
+            while (not self.bulk.job_is_completed()):
+                sleep(5)
 
-        self.handle_batch_error(batch_id)
-        batch_res = self.bulk.batch_result()[batch_id]
-        #if batch_res == [IGNORE_SF_RESPONSE]:
-        #    batch_res= []
-        # close job
-        self.bulk.job_close()
-        
-        return (batch_id, batch_res)
+            self.handle_batch_error(batch_id)
+            batch_res = self.bulk.batch_result()[batch_id]
+            #if batch_res == [IGNORE_SF_RESPONSE]:
+            #    batch_res= []
+            # close job
+            self.bulk.job_close()
+            return (batch_id, batch_res)
+        except:
+            self.bulk.job_close()
+            raise
 
     def bulk_insert(self, objname, csv_data):
         res = self.bulk_common_('insert', objname, csv_data)

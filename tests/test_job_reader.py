@@ -74,7 +74,8 @@ def test_var_csv():
              'SELECT Id FROM src.Account LIMIT 1 => var:sfvar',
              'SELECT {one} as f1, {nine}+1 as f2; => csv:one_ten',
              'SELECT f1, {nine} as f9, (SELECT f2 FROM csv.one_ten) as f10 FROM csv.one_ten; => csv:one_nine_ten',
-             'CREATE TABLE test_params(test int); INSERT INTO test_params VALUES(2); INSERT INTO test_params VALUES(3); SELECT test from test_params; => batch_begin:test:PARAM',
+             'SELECT i from csv.ints10000 WHERE i>=2 LIMIT 2; => batch_begin:i:PARAM',
+             'SELECT {PARAM}; => var:foo',
              '=> batch_end:',
              'SELECT {PARAM}; => var:final_test']
     job_syntax = JobSyntax(lines)
@@ -92,7 +93,7 @@ def test_var_csv():
     res_batch_params = job_controller.variables[BATCH_PARAMS_KEY]
     assert res_batch_params == ['2', '3']
     sfvar = job_controller.variables['sfvar']
-    assert len(sfvar) == 18
+    assert len(sfvar) >= 15
     final_param = job_controller.variables['final_test']
     assert final_param == '3'
     del job_controller
@@ -127,12 +128,12 @@ WHERE Id = '{id_test}'; \
         id_idx = csv_data.fields.index('Id')
         assert 2 == len(csv_data.rows)
         for row in csv_data.rows:
-            assert len(row[id_idx]) == 18
+            assert len(row[id_idx]) >= 15
 
 if __name__ == '__main__':
     loginit(__name__)
     test_read()
     test_parse()
     test_var_csv()
-    test_job_controller()
+    #test_job_controller()
 
