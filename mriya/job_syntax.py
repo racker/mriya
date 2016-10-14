@@ -27,6 +27,7 @@ OP_UPDATE = 'update'
 OP_DELETE = 'delete'
 OBJNAME_KEY = 'objname'
 NEW_IDS_TABLE = 'new_ids_table'
+OVERWRITE_KEY = 'overwrite'
 
 # only sqlite related
 CSVLIST_KEY = 'csvlist'
@@ -153,6 +154,12 @@ class JobSyntax(object):
         key = key_value[0].strip()
         val = key_value[1].strip()
         if key == CSV_KEY or key == VAR_KEY:
+            values[key] = val
+            if len(key_value) > 2:
+                overwrite_flag = key_value[2].strip()
+                if overwrite_flag == OVERWRITE_KEY:
+                    values[OVERWRITE_KEY] = True
+        elif key == VAR_KEY:
             values[key] = val
         elif key == DST_KEY or key == SRC_KEY:
             objname_val = key_value[2].strip()

@@ -30,6 +30,16 @@ class SqliteExecutor(SqlExecutor):
     def __init__(self, job_syntax_item, variables):
         super(SqliteExecutor, self).__init__(job_syntax_item, variables)
         loginit(__name__)
+        self.query = None
+
+    def get_query(self):
+        if not self.query:
+            self.query = self.prepare_query_put_vars(
+                self.job_syntax_item[QUERY_KEY])
+            # end query with ';' add if ';' not exist
+            if self.query and self.query[-1] != ';':
+                self.query += ';'
+        return self.query
 
     def _create_script(self, variables):
         imports = ''
@@ -48,11 +58,10 @@ class SqliteExecutor(SqlExecutor):
         elif BATCH_BEGIN_KEY in self.job_syntax_item:
             output += ".headers on\n"
             output += ".output stdout\n"
-        query = self.prepare_query_put_vars(self.job_syntax_item[QUERY_KEY])
-        getLogger(__name__).info('EXECUTE: %s', query)
+        getLogger(__name__).info('EXECUTE: %s', self.get_query())
         input_data = SQLITE_SCRIPT_FMT.format(imports=imports,
                                               output=output,
-                                              query=query)
+                                              query=self.get_query())
         return input_data
 
     def execute(self):
@@ -67,8 +76,7 @@ class SqliteExecutor(SqlExecutor):
         del executor
         res = res['refname']
         if res[0] != 0:
-            raise Exception("Sqlite query error",
-                            self.job_syntax_item[QUERY_KEY])
+            raise Exception("Sqlite query error", self.get_query())
         else:
             self._handle_var_create(res)
             retcode = res[1]

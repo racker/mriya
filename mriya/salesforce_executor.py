@@ -15,14 +15,21 @@ class SalesforceExecutor(SqlExecutor):
         super(SalesforceExecutor, self).__init__(job_syntax_item, variables)
         self.conn = conn
         loginit(__name__)
+        self.query = None
+    
+    def get_query(self):
+        if not self.query:
+            self.query = self.prepare_query_put_vars(
+                self.job_syntax_item[QUERY_KEY])
+            # get rid of trailing ';' in query
+            if self.query and self.query[-1] == ';':
+                self.query = self.query[:-1]
+        return self.query
 
     def execute(self):
         objname = self.job_syntax_item[OBJNAME_KEY]
-        soql_query = self.job_syntax_item[QUERY_KEY]
-        soql_query = self.prepare_query_put_vars(
-            self.job_syntax_item[QUERY_KEY])
-        getLogger(__name__).info("Execute: %s", soql_query)
-        bulk_res = self.conn.bulk_load(objname, soql_query)
+        getLogger(__name__).info("Execute: %s", self.get_query())
+        bulk_res = self.conn.bulk_load(objname, self.get_query())
         self.handle_result(bulk_res)
         retcode = 0
         return retcode

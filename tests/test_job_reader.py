@@ -102,13 +102,13 @@ def test_var_csv():
 
 def test_job_controller():
     notch = randint(0, 1000000)
-    lines = ["SELECT Id,Account_Birthday__c,Name FROM src.Account LIMIT 2 => csv:some_data",
+    lines = ["SELECT Id,Account_Birthday__c,Name FROM src.Account LIMIT 2; => csv:some_data",
              "SELECT Id from csv.some_data LIMIT 1; => var:id_test",
-             "SELECT Account_Birthday__c,Name FROM csv.some_data; => csv:some_data_staging => dst:insert:Account:newids",
+             "SELECT Account_Birthday__c,Name FROM csv.some_data; => csv:some_data_staging:overwrite => dst:insert:Account:newids",
              "UPDATE csv.some_data SET Account_Birthday__c=null, Name='%d'; \
              SELECT Id,Account_Birthday__c,Name FROM csv.some_data \
-WHERE Id = '{id_test}'; \
-             => csv:some_data_staging => dst:update:Account" % notch]
+WHERE Id = '{id_test}' \
+             => csv:some_data_staging:overwrite => dst:update:Account" % notch]
     job_syntax = JobSyntax(lines)
     with open(config_filename) as conf_file:
         config = ConfigParser()
