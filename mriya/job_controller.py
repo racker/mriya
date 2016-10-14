@@ -73,10 +73,10 @@ class JobController(object):
             query = job_syntax_item[QUERY_KEY].strip()
             is_csv = CSV_KEY in job_syntax_item
             is_var = VAR_KEY in job_syntax_item
-            overwrite = OVERWRITE_KEY in job_syntax_item
+            is_cache = CACHE_KEY in job_syntax_item
             if not query:
                 return
-            if not is_var and is_csv and not overwrite:
+            if not is_var and is_csv and is_cache:
                 csv_fname = job_syntax_item[CSV_KEY] + '.csv'
                 if os.path.isfile(csv_fname) and os.stat(csv_fname).st_size:
                     getLogger(__name__).info(

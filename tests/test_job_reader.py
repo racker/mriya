@@ -39,7 +39,7 @@ def test_parse():
              'SELECT 1 as bacth1 from csv.some_csv; => batch_begin:batch1:BATCH',
              'SELECT 1 from dst.some_object WHERE b=a => csv:some_csv => batch_end:',
              '=> batch_end:',
-             'SELECT 1 as test, 2 as test2; => csv:foo => dst:insert:test_table:new_ids',
+             'SELECT 1 as test, 2 as test2; => csv:foo:cache => dst:insert:test_table:new_ids',
              'SELECT 1 as test, 2 as test2; => csv:foo => dst:insert:test_table']
     expected = [
         {},
@@ -57,7 +57,7 @@ def test_parse():
         {'query': '', 'batch_end': ''},
         {'query': 'SELECT 1 as test, 2 as test2;',
          'op': 'insert', 'dst' : 'test_table', 'csv': 'foo',
-         'new_ids_table': 'new_ids'},
+         'cache': True, 'new_ids_table': 'new_ids'},
         {'query': 'SELECT 1 as test, 2 as test2;', 'csv': 'foo',
          'op': 'insert', 'dst' : 'test_table'}
     ]
@@ -102,13 +102,13 @@ def test_var_csv():
 
 def test_job_controller():
     notch = randint(0, 1000000)
-    lines = ["SELECT Id,Account_Birthday__c,Name FROM src.Account LIMIT 2; => csv:some_data",
+    lines = ["SELECT Id,Account_Birthday__c,Name FROM src.Account LIMIT 2; => csv:some_data:cache",
              "SELECT Id from csv.some_data LIMIT 1; => var:id_test",
-             "SELECT Account_Birthday__c,Name FROM csv.some_data; => csv:some_data_staging:overwrite => dst:insert:Account:newids",
+             "SELECT Account_Birthday__c,Name FROM csv.some_data; => csv:some_data_staging => dst:insert:Account:newids",
              "UPDATE csv.some_data SET Account_Birthday__c=null, Name='%d'; \
              SELECT Id,Account_Birthday__c,Name FROM csv.some_data \
 WHERE Id = '{id_test}' \
-             => csv:some_data_staging:overwrite => dst:update:Account" % notch]
+             => csv:some_data_staging => dst:update:Account" % notch]
     job_syntax = JobSyntax(lines)
     with open(config_filename) as conf_file:
         config = ConfigParser()
