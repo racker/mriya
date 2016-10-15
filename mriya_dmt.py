@@ -6,14 +6,14 @@ __email__ = "yaroslav.litvinov@rackspace.com"
 
 import argparse
 from configparser import ConfigParser
-from mriya.job_syntax import JobSyntax
+from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_controller import JobController
 from mriya.log import loginit
 
 def create_job_controller(config, job_file, src_name, dst_name):
     endpoint_names = {'src': src_name,
                       'dst': dst_name}
-    job_syntax = JobSyntax(job_file.readlines())
+    job_syntax = JobSyntaxExtended(job_file.readlines())
     job_controller = JobController(config,
                                    endpoint_names,
                                    job_syntax)

@@ -33,9 +33,13 @@ CACHE_KEY = 'cache'
 CSVLIST_KEY = 'csvlist'
 
 
+from logging import getLogger
+from mriya.log import loginit
+
 class JobSyntax(object):
 
     def __init__(self, raw_lines):
+        loginit(__name__)
         raw_lines = JobSyntax.prepare_lines(raw_lines)
         self.values = self.parse_lines(raw_lines)
 
@@ -45,6 +49,9 @@ class JobSyntax(object):
 
     def __getitem__(self, idx):
         return self.values[idx]
+
+    def values(self):
+        return self.values
 
     @staticmethod
     def sqltype(job_syntax_item):
@@ -151,8 +158,12 @@ class JobSyntax(object):
         if pair.find(TRANSMITTER) != -1:
             pair = pair[:pair.find(TRANSMITTER)]
         key_value = pair.split(':')
-        key = key_value[0].strip()
-        val = key_value[1].strip()
+        try:
+            key = key_value[0].strip()
+            val = key_value[1].strip()
+        except:
+            getLogger(__name__).error('Error: %s', pair)
+            raise
         if key == CSV_KEY or key == VAR_KEY:
             values[key] = val
             if len(key_value) > 2:

@@ -44,14 +44,15 @@ class SqliteExecutor(SqlExecutor):
     def _create_script(self, variables):
         imports = ''
         if CSVLIST_KEY in self.job_syntax_item :
-            for csv_name in self.job_syntax_item[CSVLIST_KEY] :
-                imports += ".import {name}.csv {name}\n"\
-                    .format(name=csv_name)
+            for table_name in self.job_syntax_item[CSVLIST_KEY] :
+                imports += ".import {csv} {name}\n"\
+                    .format(csv=self.csv_name(table_name), name=table_name)
         output = ''
         if CSV_KEY in self.job_syntax_item:
-            csvfile = self.job_syntax_item[CSV_KEY]
+            table_name = self.job_syntax_item[CSV_KEY]
             output += ".headers on\n"
-            output += ".output {csvfile}.csv\n".format(csvfile=csvfile)
+            output += ".output {csv}\n"\
+                .format(csv=self.csv_name(table_name))
         elif VAR_KEY in self.job_syntax_item:
             output += ".headers off\n"
             output += ".output stdout\n"
@@ -84,8 +85,7 @@ class SqliteExecutor(SqlExecutor):
 
     def _handle_var_create(self, res):
         if VAR_KEY in self.job_syntax_item:
-            self.save_var_as_query_results(self.job_syntax_item[VAR_KEY],
-                                           res[1].strip())
+            self.save_var(self.job_syntax_item[VAR_KEY], res[1].strip())
         elif BATCH_BEGIN_KEY in self.job_syntax_item:
             param_field_name = self.job_syntax_item[BATCH_BEGIN_KEY][0]
             stream = StringIO(res[1])

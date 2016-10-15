@@ -36,7 +36,8 @@ class SalesforceExecutor(SqlExecutor):
 
     def handle_result(self, bulk_res):
         if CSV_KEY in self.job_syntax_item:
-            with open(self.job_syntax_item[CSV_KEY]+'.csv', 'w') as csv_f:
+            csvfname = SqlExecutor.csv_name(self.job_syntax_item[CSV_KEY])
+            with open(csvfname, 'w') as csv_f:
                 if not len(bulk_res[-1]):
                     #ignore last empty results
                     bulk_res = bulk_res[:-1]
@@ -47,6 +48,6 @@ class SalesforceExecutor(SqlExecutor):
         elif VAR_KEY in self.job_syntax_item:
             res = parse_batch_res_data(bulk_res)
             if res.rows:
-                self.save_var_as_query_results(
-                    self.job_syntax_item[VAR_KEY], res.rows[0][0])
+                self.save_var(self.job_syntax_item[VAR_KEY],
+                              res.rows[0][0])
 

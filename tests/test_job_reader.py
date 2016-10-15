@@ -10,6 +10,7 @@ from StringIO import StringIO
 from random import randint
 from configparser import ConfigParser
 from mriya.job_syntax import JobSyntax
+from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_syntax import BATCH_PARAMS_KEY
 from mriya.sqlite_executor import SqliteExecutor
 from mriya.job_controller import JobController
@@ -31,14 +32,14 @@ SELECT 1 => var:MIN => dst:foo'
                      'SELECT 1 => var:MIN => dst:foo']
 
 
-def test_parse():
+def test_job_syntax():
     lines = ['--something', #will not be added to parsed values
              'SELECT 1 => csv:const1',
              'SELECT 1 => var:MIN',
              'SELECT f1, (SELECT f2 FROM csv.one_ten) as f10 FROM csv.one_ten, 9; => csv:final => dst:insert:foo',
              'SELECT 1 as bacth1 from csv.some_csv; => batch_begin:batch1:BATCH',
-             'SELECT 1 from dst.some_object WHERE b=a => csv:some_csv => batch_end:',
-             '=> batch_end:',
+             'SELECT 1 from dst.some_object WHERE b=a => csv:some_csv => batch_end:BATCH',
+             '=> batch_end:BATCH',
              'SELECT 1 as test, 2 as test2; => csv:foo:cache => dst:insert:test_table:new_ids',
              'SELECT 1 as test, 2 as test2; => csv:foo => dst:insert:test_table']
     expected = [
@@ -53,8 +54,8 @@ def test_parse():
          'csvlist': ['some_csv']},
         {'query': 'SELECT 1 from some_object WHERE b=a',
          'csv': 'some_csv', 'from': 'dst', 'objname': 'some_object',
-         'batch_end': ''},
-        {'query': '', 'batch_end': ''},
+         'batch_end': 'BATCH'},
+        {'query': '', 'batch_end': 'BATCH'},
         {'query': 'SELECT 1 as test, 2 as test2;',
          'op': 'insert', 'dst' : 'test_table', 'csv': 'foo',
          'cache': True, 'new_ids_table': 'new_ids'},
@@ -76,9 +77,31 @@ def test_var_csv():
              'SELECT f1, {nine} as f9, (SELECT f2 FROM csv.one_ten) as f10 FROM csv.one_ten; => csv:one_nine_ten',
              'SELECT i from csv.ints10000 WHERE i>=2 LIMIT 2; => batch_begin:i:PARAM',
              'SELECT {PARAM}; => var:foo',
-             '=> batch_end:',
+             '=> batch_end:PARAM',
              'SELECT {PARAM}; => var:final_test']
-    job_syntax = JobSyntax(lines)
+    job_syntax = JobSyntaxExtended(lines)
+
+    expected = [{'query': 'SELECT 1;', 'var': 'one'},
+                {'query': 'SELECT 9;', 'var': 'nine'},
+                {'query': 'SELECT Id FROM Account LIMIT 1', 
+                 'var': 'sfvar', 'from': 'src', 'objname': 'Account'},
+                {'query': 'SELECT {one} as f1, {nine}+1 as f2;', 'csv': 'one_ten'},
+                {'query': 'SELECT f1, {nine} as f9, (SELECT f2 FROM one_ten) as f10 FROM one_ten;',
+                 'csvlist': ['one_ten'], 'csv': 'one_nine_ten', 'from': 'csv'},
+                {'query': 'SELECT i from ints10000 WHERE i>=2 LIMIT 2;',
+                 'batch_begin': ('i', 'PARAM'), 'from': 'csv',
+                 'csvlist': ['ints10000'],
+                 'batch': [{'var': 'foo', 'query': 'SELECT {PARAM};'}] },
+                {'query': 'SELECT {PARAM};', 'var': 'final_test'}
+            ]
+
+    assert len(job_syntax.items()) == len(expected)
+    for idx in xrange(len(job_syntax.items())):
+        res = job_syntax.items()[idx]
+        exp = expected[idx]
+        logging.getLogger(__name__).info('idx: %d, res=%s', idx, res)
+        assert res == exp
+
     try:
         os.remove('one_nine_ten.csv')
     except:
@@ -109,7 +132,7 @@ def test_job_controller():
              SELECT Id,Account_Birthday__c,Name FROM csv.some_data \
 WHERE Id = '{id_test}' \
              => csv:some_data_staging => dst:update:Account" % notch]
-    job_syntax = JobSyntax(lines)
+    job_syntax = JobSyntaxExtended(lines)
     with open(config_filename) as conf_file:
         config = ConfigParser()
         config.read_file(conf_file)
@@ -133,7 +156,7 @@ WHERE Id = '{id_test}' \
 if __name__ == '__main__':
     loginit(__name__)
     test_read()
-    test_parse()
+    test_job_syntax()
     test_var_csv()
     test_job_controller()
 

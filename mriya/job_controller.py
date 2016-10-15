@@ -9,12 +9,14 @@ import os.path
 from logging import getLogger
 from mriya.log import loginit
 from mriya.job_syntax import *
+from mriya.sql_executor import SqlExecutor
 from mriya.sqlite_executor import SqliteExecutor
 from mriya.salesforce_executor import SalesforceExecutor
 from mriya.data_connector import create_bulk_connector
 from mriya.bulk_data import csv_from_bulk_data, parse_batch_res_data
+from mriya.job_syntax_extended import JobSyntaxExtended, BATCH_KEY
 
-INTS_TABLE = 'ints10000.csv'
+INTS_TABLE = SqlExecutor.csv_name('ints10000')
 
 class Endpoints(object):
     def __init__(self, config, endpoint_names):
@@ -77,14 +79,16 @@ class JobController(object):
             if not query:
                 return
             if not is_var and is_csv and is_cache:
-                csv_fname = job_syntax_item[CSV_KEY] + '.csv'
-                if os.path.isfile(csv_fname) and os.stat(csv_fname).st_size:
+                csv_name = SqlExecutor.csv_name(job_syntax_item[CSV_KEY])
+                csv_size = SqlExecutor.csv_size(job_syntax_item[CSV_KEY])
+                if csv_size:
                     getLogger(__name__).info(
-                        "SKIP query: '%s', csvfile exists: %s",
-                        query, csv_fname)
+                        "SKIP query: '%s', csvfile exist: %s",
+                        query, csv_name)
                     return
             sql_exec = self.create_executor(job_syntax_item)
             sql_exec.execute()
+            sql_exec.saved_csv()
             self.post_operation(job_syntax_item)
             self.variables = sql_exec.variables
             del sql_exec
@@ -95,34 +99,28 @@ class JobController(object):
         for job_syntax_item in self.job_syntax:
             if not job_syntax_item:
                 continue
-            if not batch:
-                self.handle_job_item_(job_syntax_item)
+            if BATCH_KEY in job_syntax_item:
+                self.run_batch_(job_syntax_item)
             else:
-                if batch_items is None:
-                    batch_items = []
-                batch_items.append(job_syntax_item)
-            batch_param_name = batch
-            batch = self.get_batch_param_name(batch, job_syntax_item)
-            # if all batch items are located
-            if batch_param_name and not batch:
-                self.run_batch_(batch_items, batch_param_name)
+                self.handle_job_item_(job_syntax_item)
 
-    def run_batch_(self, batch_items, batch_param_name):
+    def run_batch_(self, job_syntax_item):
+        self.handle_job_item_(job_syntax_item)
+        batch_param_name = job_syntax_item[BATCH_BEGIN_KEY][1]
+        batch_items = job_syntax_item[BATCH_KEY]
         batch_params = self.variables[BATCH_PARAMS_KEY]
         # loop through batch parameters list
-        for param in batch_params:
+        for param_idx in xrange(len(batch_params)):
+            param = batch_params[param_idx]
             self.variables[batch_param_name] = param
-            for job_syntax_item in batch_items:
-                self.handle_job_item_(job_syntax_item)
+            getLogger(__name__).info("------ batch %s/%s",
+                                     param_idx, len(batch_params))
+            getLogger(__name__)\
+                .info("set batch var: %s=%s",
+                      batch_param_name, param )
+            for batch_job_syntax_item in batch_items:
+                self.handle_job_item_(batch_job_syntax_item)
 
-    def get_batch_param_name(self, batch, job_syntax_item):
-        if BATCH_BEGIN_KEY in job_syntax_item:
-            field = job_syntax_item[BATCH_BEGIN_KEY][0]
-            batch = job_syntax_item[BATCH_BEGIN_KEY][1]
-        elif BATCH_END_KEY in job_syntax_item:
-            batch = None
-        return batch
-        
     def post_operation(self, job_syntax_item):
         endpoint = None
         if DST_KEY in job_syntax_item:
@@ -135,7 +133,7 @@ class JobController(object):
             if opname == OP_UPSERT or opname == OP_INSERT or \
                opname == OP_UPDATE:
                 csv_data = None
-                csv_filename = job_syntax_item[CSV_KEY] + '.csv'
+                csv_filename = SqlExecutor.csv_name(job_syntax_item[CSV_KEY])
                 with open(csv_filename) as csv_f:
                     csv_data = csv_f.read()
                 objname = job_syntax_item[endpoint]
@@ -147,8 +145,8 @@ class JobController(object):
                 elif opname == OP_INSERT:
                     res = conn.bulk_insert(objname, csv_data)
                     result_ids = parse_batch_res_data(res)
-                    results_file_name = job_syntax_item[NEW_IDS_TABLE] \
-                                        + '.csv'
+                    results_file_name = \
+                            SqlExecutor.csv_name(job_syntax_item[NEW_IDS_TABLE])
                     with open(results_file_name, 'w') as result_ids_file:
                         csv_data = csv_from_bulk_data(result_ids)
                         result_ids_file.write(csv_data)
