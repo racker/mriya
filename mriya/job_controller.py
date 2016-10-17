@@ -5,7 +5,6 @@ __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
 import os
-import json
 import os.path
 from logging import getLogger
 from configparser import ConfigParser
@@ -148,9 +147,16 @@ class JobController(object):
                              src=self.endpoints.endpoint_names['src'],
                              dst=self.endpoints.endpoint_names['dst'],
                              variables=text_vars)
+        input_data = self.batch_input_lines(job_syntax_items)
         getLogger(__name__).info('Invoke cmd:%s', cmd)
         self.external_exec.execute('batch_%d' % idx, cmd,
-                                   input_data=json.dumps(job_syntax_items))
+                                   input_data=input_data)
+
+    def batch_input_lines(self, job_syntax_items):
+        res = ''
+        for item in job_syntax_items:
+            res += item[LINE_KEY] + '\n'
+        return res
 
     def post_operation(self, job_syntax_item):
         endpoint = None

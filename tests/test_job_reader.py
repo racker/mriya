@@ -6,10 +6,11 @@ __email__ = "yaroslav.litvinov@rackspace.com"
 
 import logging
 import os
+from pprint import PrettyPrinter
 from StringIO import StringIO
 from random import randint
 from configparser import ConfigParser
-from mriya.job_syntax import JobSyntax
+from mriya.job_syntax import JobSyntax, LINE_KEY
 from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_syntax import BATCH_PARAMS_KEY
 from mriya.sqlite_executor import SqliteExecutor
@@ -21,6 +22,22 @@ config_filename = 'test-config.ini'
 endpoint_names = {'dst': 'test', 'src': 'test'}
 
 UAT_SECTION = 'uat'
+
+def assert_job_syntax_lines(res_syntax_items, expected):
+    assert len(res_syntax_items) == len(expected)
+    for idx in xrange(len(res_syntax_items)):
+        res = res_syntax_items[idx]
+        if res:
+            del res[LINE_KEY]
+        exp = expected[idx]
+        try:
+            assert res == exp
+            logging.getLogger(__name__).info('OK idx: %d', idx)
+        except:
+            logging.getLogger(__name__).info('FAILED idx: %d', idx)
+            PrettyPrinter(indent=4).pprint(res)
+            raise
+
 
 def test_read():
     text = 'SELECT \\\n\
@@ -62,12 +79,9 @@ def test_job_syntax():
         {'query': 'SELECT 1 as test, 2 as test2;', 'csv': 'foo',
          'op': 'insert', 'dst' : 'test_table'}
     ]
-    assert len(lines) == len(expected)
-    for idx in xrange(len(lines)):
-        res = JobSyntax.parse_line(lines[idx])
-        exp = expected[idx]
-        logging.getLogger(__name__).info('idx: %d, res=%s', idx, res)
-        assert res == exp
+
+    job_syntax = JobSyntax(lines)
+    assert_job_syntax_lines(job_syntax.items(), expected)
 
 def test_var_csv():
     lines = ['SELECT 1; => var:one',
@@ -77,6 +91,9 @@ def test_var_csv():
              'SELECT f1, {nine} as f9, (SELECT f2 FROM csv.one_ten) as f10 FROM csv.one_ten; => csv:one_nine_ten',
              'SELECT i from csv.ints10000 WHERE i>=2 LIMIT 2; => batch_begin:i:PARAM',
              'SELECT {PARAM}; => var:foo',
+             'SELECT i from csv.ints10000 WHERE i>=CAST(10 as INTEGER) LIMIT 2; => batch_begin:i:NESTED',
+             'SELECT {NESTED}; => var:foo2',
+             '=> batch_end:NESTED',
              '=> batch_end:PARAM',
              'SELECT {PARAM}; => var:final_test']
     job_syntax = JobSyntaxExtended(lines)
@@ -91,17 +108,20 @@ def test_var_csv():
                 {'query': 'SELECT i from ints10000 WHERE i>=2 LIMIT 2;',
                  'batch_begin': ('i', 'PARAM'), 'from': 'csv',
                  'csvlist': ['ints10000'],
-                 'batch': [{'var': 'foo', 'query': 'SELECT {PARAM};'}] },
+                 'batch': [{'query': 'SELECT {PARAM};', 'var': 'foo', 
+                            'line': 'SELECT {PARAM}; => var:foo'},
+                           {'query': 'SELECT i from ints10000 WHERE i>=CAST(10 as INTEGER) LIMIT 2;',
+                            'line': 'SELECT i from csv.ints10000 WHERE i>=CAST(10 as INTEGER) LIMIT 2; => batch_begin:i:NESTED',
+                            'batch_begin': ('i', 'NESTED'), 'from': 'csv', 'csvlist': ['ints10000']},
+                           {'query': 'SELECT {NESTED};', 'var': 'foo2',
+                            'line': 'SELECT {NESTED}; => var:foo2'},
+                           {'batch_end': 'NESTED', 'query': '',
+                            'line': '=> batch_end:NESTED'}]},
                 {'query': 'SELECT {PARAM};', 'var': 'final_test'}
             ]
 
-    assert len(job_syntax.items()) == len(expected)
-    for idx in xrange(len(job_syntax.items())):
-        res = job_syntax.items()[idx]
-        exp = expected[idx]
-        logging.getLogger(__name__).info('idx: %d, res=%s', idx, res)
-        assert res == exp
-
+    job_syntax_extended = JobSyntaxExtended(lines)
+    assert_job_syntax_lines(job_syntax_extended.items(), expected)
     try:
         os.remove('one_nine_ten.csv')
     except:

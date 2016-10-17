@@ -16,7 +16,7 @@ class JobSyntaxExtended(JobSyntax):
     def __init__(self, raw_lines):
         super(JobSyntaxExtended, self).__init__(raw_lines)
         loginit(__name__)
-        self.values_extended = self.parse_lines_extended()
+        self.values_extended = self.parse_lines_extended(self.values)
 
     def __iter__(self):
         for lst in self.values_extended:
@@ -29,21 +29,23 @@ class JobSyntaxExtended(JobSyntax):
         return self.values_extended
 
     def batch_var_name(self, watch_batch_var, job_syntax_item):
-        if BATCH_BEGIN_KEY in job_syntax_item:
+        if BATCH_BEGIN_KEY in job_syntax_item and not watch_batch_var:
             watch_batch_var = job_syntax_item[BATCH_BEGIN_KEY][1]
-        elif BATCH_END_KEY in job_syntax_item:
+        elif BATCH_END_KEY in job_syntax_item and \
+             job_syntax_item[BATCH_END_KEY] == watch_batch_var:
             watch_batch_var = None
         return watch_batch_var
         
-    def parse_lines_extended(self):
+    def parse_lines_extended(self, self_values):
         values = []
         batch_items = []
         watch_batch = None
-        for job_syntax_item in self.values:
+        for job_syntax_item in self_values:
             print job_syntax_item
             if not watch_batch:
                 values.append(job_syntax_item)
-            elif BATCH_END_KEY not in job_syntax_item:
+            elif not (BATCH_END_KEY in job_syntax_item and \
+                      job_syntax_item[BATCH_END_KEY] == watch_batch):
                 # add all related to batch except end batch flag
                 batch_items.append(job_syntax_item)
             existing_batch = watch_batch

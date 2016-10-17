@@ -14,6 +14,7 @@ DST_KEY = 'dst'
 SRC_KEY = 'src'
 FROM_KEY = 'from' # values 'dst' \ 'src' \ 'csv'
 QUERY_KEY = 'query'
+LINE_KEY = 'line'
 
 BATCH_PARAMS_KEY = 'batch_params'
 BATCH_BEGIN_KEY = 'batch_begin'
@@ -50,7 +51,7 @@ class JobSyntax(object):
     def __getitem__(self, idx):
         return self.values[idx]
 
-    def values(self):
+    def items(self):
         return self.values
 
     @staticmethod
@@ -151,6 +152,7 @@ class JobSyntax(object):
             values = JobSyntax.parse_transmitter_value(values,
                                                        line[start_pos:])
             transm_pos = line.find(TRANSMITTER, start_pos)
+        values[LINE_KEY] = line
         return values
     
     @staticmethod

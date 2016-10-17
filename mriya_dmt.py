@@ -5,7 +5,6 @@ __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
 import argparse
-import json
 from sys import stdin
 from logging import getLogger
 from mriya.job_syntax_extended import JobSyntaxExtended
@@ -19,16 +18,6 @@ def run_job_from_file(config, job_file, endpoints, variables):
                                    job_syntax,
                                    variables)
     job_controller.run_job()
-
-def run_job_from_stdin(config, endpoints, variables):
-    getLogger(__name__).info('Run batch as stdin input')
-    job_syntax = json.load(stdin)
-    job_controller = JobController(config,
-                                   endpoints,
-                                   job_syntax,
-                                   variables)
-    job_controller.run_job()
-
 
 def vars_from_args(args_var):
     variables = {}
@@ -72,8 +61,10 @@ if __name__ == '__main__':
     variables = vars_from_args(args.var)
     endpoints = {'src': args.src_name,
                  'dst': args.dst_name}
+    input_file = None
     if args.job_stdin:
-        run_job_from_stdin(args.conf_file, endpoints, variables)        
+        getLogger(__name__).info('Run batch as stdin input')
+        input_file = sys.stdin
     else:
-        run_job_from_file(args.conf_file, args.job_file,
-                          endpoints, variables)
+        input_file = args.job_file
+    run_job_from_file(args.conf_file, input_file, endpoints, variables)
