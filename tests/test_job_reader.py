@@ -107,11 +107,10 @@ def test_var_csv():
     except:
         pass
     with open(config_filename) as conf_file:
-        config = ConfigParser()
-        config.read_file(conf_file)
-        job_controller = JobController(config,
+        job_controller = JobController(conf_file,
                                        endpoint_names,
-                                       job_syntax)
+                                       job_syntax,
+                                       variables={})
     job_controller.run_job()
     res_batch_params = job_controller.variables[BATCH_PARAMS_KEY]
     assert res_batch_params == ['2', '3']
@@ -134,11 +133,8 @@ WHERE Id = '{id_test}' \
              => csv:some_data_staging => dst:update:Account" % notch]
     job_syntax = JobSyntaxExtended(lines)
     with open(config_filename) as conf_file:
-        config = ConfigParser()
-        config.read_file(conf_file)
-        job_controller = JobController(config,
-                                       endpoint_names,
-                                       job_syntax)
+        job_controller = JobController(conf_file, endpoint_names,
+                                       job_syntax, {})
     job_controller.run_job()
     del job_controller
     with open('some_data_staging.csv') as resulted_file:

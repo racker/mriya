@@ -5,19 +5,38 @@ __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
 import argparse
-from configparser import ConfigParser
+import json
+from sys import stdin
+from logging import getLogger
 from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_controller import JobController
 from mriya.log import loginit
 
-def create_job_controller(config, job_file, src_name, dst_name):
-    endpoint_names = {'src': src_name,
-                      'dst': dst_name}
+def run_job_from_file(config, job_file, endpoints, variables):
     job_syntax = JobSyntaxExtended(job_file.readlines())
     job_controller = JobController(config,
-                                   endpoint_names,
-                                   job_syntax)
+                                   endpoints,
+                                   job_syntax,
+                                   variables)
     job_controller.run_job()
+
+def run_job_from_stdin(config, endpoints, variables):
+    getLogger(__name__).info('Run batch as stdin input')
+    job_syntax = json.load(stdin)
+    job_controller = JobController(config,
+                                   endpoints,
+                                   job_syntax,
+                                   variables)
+    job_controller.run_job()
+
+
+def vars_from_args(args_var):
+    variables = {}
+    if args_var:
+        for item in args_var:
+            variables[item[0]] = item[1]
+    return variables
+
 
 def add_args(parser):
     parser.add_argument("--conf-file", action="store",
@@ -25,7 +44,9 @@ def add_args(parser):
                         type=file, required=True)
     parser.add_argument("--job-file", action="store",
                         help="Job file with sql instructions",
-                        type=file, required=True)
+                        type=file)
+    parser.add_argument('--job-stdin', action='store_true', required=False)
+    parser.add_argument('--var', nargs='*', action='append')
     parser.add_argument("--src-name",
                         help="Name of section from config related to source",
                         type=str, required=True)
@@ -44,8 +65,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser = add_args(parser)
     args = parser.parse_args()
-    config = ConfigParser()
-    config.read_file(args.conf_file)
-    create_job_controller(config, args.job_file,
-                          args.src_name, args.dst_name)
+    if not args.job_file and not args.job_stdin:
+        print "Arguments error: Job data not specified"
+        parser.print_help()
 
+    variables = vars_from_args(args.var)
+    endpoints = {'src': args.src_name,
+                 'dst': args.dst_name}
+    if args.job_stdin:
+        run_job_from_stdin(args.conf_file, endpoints, variables)        
+    else:
+        run_job_from_file(args.conf_file, args.job_file,
+                          endpoints, variables)

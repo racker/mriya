@@ -5,10 +5,13 @@ __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
 import os
+import json
 import os.path
 from logging import getLogger
+from configparser import ConfigParser
 from mriya.log import loginit
 from mriya.job_syntax import *
+from mriya.opexecutor import Executor
 from mriya.sql_executor import SqlExecutor
 from mriya.sqlite_executor import SqliteExecutor
 from mriya.salesforce_executor import SalesforceExecutor
@@ -40,12 +43,16 @@ class Endpoints(object):
 
 class JobController(object):
 
-    def __init__(self, config, endpoint_names, job_syntax):
+    def __init__(self, config_file, endpoint_names,
+                 job_syntax, variables):
         loginit(__name__)
-        self.config = config
+        self.config_file = config_file
+        self.config = ConfigParser()
+        self.config.read_file(config_file)
         self.job_syntax = job_syntax
-        self.endpoints = Endpoints(config, endpoint_names)
-        self.variables = {}
+        self.endpoints = Endpoints(self.config, endpoint_names)
+        self.variables = variables
+        self.external_exec = Executor()
         # create csv file for an internal batch purpose
         with open(INTS_TABLE, 'w') as ints:
             ints.write('i\n')
@@ -55,6 +62,7 @@ class JobController(object):
 
     def __del__(self):
         del self.endpoints
+        del self.external_exec
 
     def create_executor(self, job_syntax_item):
         sql_exec = None
@@ -107,7 +115,7 @@ class JobController(object):
     def run_batch_(self, job_syntax_item):
         self.handle_job_item_(job_syntax_item)
         batch_param_name = job_syntax_item[BATCH_BEGIN_KEY][1]
-        batch_items = job_syntax_item[BATCH_KEY]
+        batch_syntax_items = job_syntax_item[BATCH_KEY]
         batch_params = self.variables[BATCH_PARAMS_KEY]
         # loop through batch parameters list
         for param_idx in xrange(len(batch_params)):
@@ -118,8 +126,31 @@ class JobController(object):
             getLogger(__name__)\
                 .info("set batch var: %s=%s",
                       batch_param_name, param )
-            for batch_job_syntax_item in batch_items:
-                self.handle_job_item_(batch_job_syntax_item)
+            # prepare variables for external batch
+            external_vars = {}
+            for key, val in self.variables.iteritems():
+                if type(val) is not list:
+                    external_vars[key] = val
+            #run batches sequentially
+            self.external_exec.wait_for_complete()
+            self.run_external_batch(param_idx, self.config_file.name,
+                                    batch_syntax_items, external_vars)
+        res = self.external_exec.wait_for_complete()
+
+    def run_external_batch(self, idx, config_filename,
+                           job_syntax_items, variables):
+        text_vars = ''
+        for key, val in variables.iteritems():
+            text_vars += ' --var %s %s' % (key, val)
+        cmd_fmt = 'python mriya_dmt.py --conf-file {conf_file} --job-stdin \
+--src-name "{src}" --dst-name "{dst}" {variables}'
+        cmd = cmd_fmt.format(conf_file=config_filename,
+                             src=self.endpoints.endpoint_names['src'],
+                             dst=self.endpoints.endpoint_names['dst'],
+                             variables=text_vars)
+        getLogger(__name__).info('Invoke cmd:%s', cmd)
+        self.external_exec.execute('batch_%d' % idx, cmd,
+                                   input_data=json.dumps(job_syntax_items))
 
     def post_operation(self, job_syntax_item):
         endpoint = None
