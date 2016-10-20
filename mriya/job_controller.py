@@ -163,9 +163,11 @@ class JobController(object):
 
     def run_internal_batch(self, idx, config_filename,
                            job_syntax_items, variables):
+        lines = [item[LINE_KEY] + '\n' for item in job_syntax_items]
+        job_syntax = JobSyntaxExtended(lines)
         batch_job = JobController(self.config_file.name,
                                   self.endpoints.endpoint_names,
-                                  job_syntax_items,
+                                  job_syntax,
                                   variables,
                                   self.debug_steps)
         batch_job.run_job()
@@ -182,12 +184,12 @@ class JobController(object):
                              src=self.endpoints.endpoint_names['src'],
                              dst=self.endpoints.endpoint_names['dst'],
                              variables=text_vars)
-        input_data = self.batch_input_lines(job_syntax_items)
+        input_data = self.batch_input_text_data(job_syntax_items)
         getLogger(__name__).info('Invoke cmd:%s', cmd)
         self.external_exec.execute('batch_%d' % idx, cmd,
                                    input_data=input_data)
 
-    def batch_input_lines(self, job_syntax_items):
+    def batch_input_text_data(self, job_syntax_items):
         res = ''
         for item in job_syntax_items:
             if item:

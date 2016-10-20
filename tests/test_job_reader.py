@@ -102,17 +102,23 @@ def test_var_csv():
                 {'query': 'SELECT 9;', 'var': 'nine'},
                 {'query': 'SELECT Id FROM Account LIMIT 1', 
                  'var': 'sfvar', 'from': 'src', 'objname': 'Account'},
-                {'query': 'SELECT {one} as f1, {nine}+1 as f2;', 'csv': 'one_ten'},
-                {'query': 'SELECT f1, {nine} as f9, (SELECT f2 FROM one_ten) as f10 FROM one_ten;',
-                 'csvlist': ['one_ten'], 'csv': 'one_nine_ten', 'from': 'csv'},
+                {'query': 'SELECT {one} as f1, {nine}+1 as f2;',
+                 'csv': 'one_ten'},
+                {'query': 'SELECT f1, {nine} as f9, (SELECT f2 FROM \
+one_ten) as f10 FROM one_ten;',
+                 'csvlist': ['one_ten'], 'csv': 'one_nine_ten',
+                 'from': 'csv'},
                 {'query': 'SELECT i from ints10000 WHERE i>=2 LIMIT 2;',
                  'batch_begin': ('i', 'PARAM'), 'from': 'csv',
                  'csvlist': ['ints10000'],
                  'batch': [{'query': 'SELECT {PARAM};', 'var': 'foo', 
                             'line': 'SELECT {PARAM}; => var:foo'},
-                           {'query': 'SELECT i from ints10000 WHERE i>=CAST(10 as INTEGER) LIMIT 2;',
-                            'line': 'SELECT i from csv.ints10000 WHERE i>=CAST(10 as INTEGER) LIMIT 2; => batch_begin:i:NESTED',
-                            'batch_begin': ('i', 'NESTED'), 'from': 'csv', 'csvlist': ['ints10000']},
+                           {'query': 'SELECT i from ints10000 WHERE \
+i>=CAST(10 as INTEGER) LIMIT 2;',
+                            'line': 'SELECT i from csv.ints10000 WHERE \
+i>=CAST(10 as INTEGER) LIMIT 2; => batch_begin:i:NESTED',
+                            'batch_begin': ('i', 'NESTED'), 'from': 'csv',
+                            'csvlist': ['ints10000']},
                            {'query': 'SELECT {NESTED};', 'var': 'foo2',
                             'line': 'SELECT {NESTED}; => var:foo2'},
                            {'batch_end': 'NESTED', 'query': '',
@@ -127,10 +133,10 @@ def test_var_csv():
     except:
         pass
     with open(config_filename) as conf_file:
-        job_controller = JobController(conf_file,
+        job_controller = JobController(conf_file.name,
                                        endpoint_names,
                                        job_syntax,
-                                       variables={})
+                                       {}, False)
     job_controller.run_job()
     res_batch_params = job_controller.variables[BATCH_PARAMS_KEY]
     assert res_batch_params == ['2', '3']
@@ -144,17 +150,19 @@ def test_var_csv():
 
 def test_job_controller():
     notch = randint(0, 1000000)
-    lines = ["SELECT Id,Account_Birthday__c,Name FROM src.Account LIMIT 2; => csv:some_data:cache",
+    lines = ["SELECT Id,Account_Birthday__c,Name FROM src.Account LIMIT 2; \
+=> csv:some_data:cache",
              "SELECT Id from csv.some_data LIMIT 1; => var:id_test",
-             "SELECT Account_Birthday__c,Name FROM csv.some_data; => csv:some_data_staging => dst:insert:Account:newids",
+             "SELECT Account_Birthday__c,Name FROM csv.some_data; \
+=> csv:some_data_staging => dst:insert:Account:newids",
              "UPDATE csv.some_data SET Account_Birthday__c=null, Name='%d'; \
              SELECT Id,Account_Birthday__c,Name FROM csv.some_data \
 WHERE Id = '{id_test}' \
              => csv:some_data_staging => dst:update:Account" % notch]
     job_syntax = JobSyntaxExtended(lines)
     with open(config_filename) as conf_file:
-        job_controller = JobController(conf_file, endpoint_names,
-                                       job_syntax, {})
+        job_controller = JobController(conf_file.name, endpoint_names,
+                                       job_syntax, {}, False)
     job_controller.run_job()
     del job_controller
     with open('some_data_staging.csv') as resulted_file:
