@@ -41,7 +41,6 @@ class JobSyntaxExtended(JobSyntax):
         batch_items = []
         watch_batch = None
         for job_syntax_item in self_values:
-            print job_syntax_item
             if not watch_batch:
                 values.append(job_syntax_item)
             elif not (BATCH_END_KEY in job_syntax_item and \

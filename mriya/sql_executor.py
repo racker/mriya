@@ -36,8 +36,9 @@ class SqlExecutor(object):
                                      self.csv_name(name),
                                      self.csv_size(name))
 
-    def prepare_query_put_vars(self, query):
-        for var_name, var_value in self.variables.iteritems():
+    @staticmethod
+    def prepare_query_put_vars(query, variables):
+        for var_name, var_value in variables.iteritems():
             if type(var_value) != list:
                 query = query.replace('{%s}' % (var_name), var_value)
         return query

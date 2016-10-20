@@ -11,12 +11,14 @@ from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_controller import JobController
 from mriya.log import loginit
 
-def run_job_from_file(config, job_file, endpoints, variables):
+def run_job_from_file(config, job_file, endpoints, variables,
+                      debug_steps):
     job_syntax = JobSyntaxExtended(job_file.readlines())
-    job_controller = JobController(config,
+    job_controller = JobController(config.name,
                                    endpoints,
                                    job_syntax,
-                                   variables)
+                                   variables,
+                                   debug_steps)
     job_controller.run_job()
 
 def vars_from_args(args_var):
@@ -35,6 +37,7 @@ def add_args(parser):
                         help="Job file with sql instructions",
                         type=file)
     parser.add_argument('--job-stdin', action='store_true', required=False)
+    parser.add_argument('--step-by-step', action='store_true', required=False)
     parser.add_argument('--var', nargs='*', action='append')
     parser.add_argument("--src-name",
                         help="Name of section from config related to source",
@@ -67,4 +70,6 @@ if __name__ == '__main__':
         input_file = sys.stdin
     else:
         input_file = args.job_file
-    run_job_from_file(args.conf_file, input_file, endpoints, variables)
+    print variables
+    run_job_from_file(args.conf_file, input_file, endpoints, variables,
+                      args.step_by_step)

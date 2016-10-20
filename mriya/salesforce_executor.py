@@ -19,8 +19,9 @@ class SalesforceExecutor(SqlExecutor):
     
     def get_query(self):
         if not self.query:
-            self.query = self.prepare_query_put_vars(
-                self.job_syntax_item[QUERY_KEY])
+            self.query = SqlExecutor.prepare_query_put_vars(
+                self.job_syntax_item[QUERY_KEY],
+                self.variables)
             # get rid of trailing ';' in query
             if self.query and self.query[-1] == ';':
                 self.query = self.query[:-1]

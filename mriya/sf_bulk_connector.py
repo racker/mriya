@@ -8,6 +8,7 @@ from logging import getLogger, DEBUG
 from time import sleep
 from mriya.base_connector import BaseBulkConnector
 from mriya.bulk_data import parse_batch_res_data
+from mriya.log import loginit
 
 #IGNORE_SF_RESPONSE = 'Records not found for this query'
 
@@ -15,6 +16,7 @@ class SfBulkConnector(BaseBulkConnector):
 
     def __init__(self, conn_param):
         super(SfBulkConnector, self).__init__(conn_param)
+        loginit(__name__)
         # initialize bulk
         self.bulk = Bulk(self.instance_url)
         self.bulk.login(username=self.conn_param.username,
@@ -60,9 +62,6 @@ class SfBulkConnector(BaseBulkConnector):
 
             self.handle_batch_error(batch_id)
             batch_res = self.bulk.batch_result()[batch_id]
-            #if batch_res == [IGNORE_SF_RESPONSE]:
-            #    batch_res= []
-            # close job
             self.bulk.job_close()
             return (batch_id, batch_res)
         except:

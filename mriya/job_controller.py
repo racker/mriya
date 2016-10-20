@@ -42,15 +42,16 @@ class Endpoints(object):
 
 class JobController(object):
 
-    def __init__(self, config_file, endpoint_names,
-                 job_syntax, variables):
+    def __init__(self, config_filename, endpoint_names,
+                 job_syntax, variables, debug_steps):
         loginit(__name__)
-        self.config_file = config_file
+        self.config_file = open(config_filename)
         self.config = ConfigParser()
-        self.config.read_file(config_file)
+        self.config.read_file(self.config_file)
         self.job_syntax = job_syntax
         self.endpoints = Endpoints(self.config, endpoint_names)
         self.variables = variables
+        self.debug_steps = debug_steps
         self.external_exec = Executor()
         # create csv file for an internal batch purpose
         with open(INTS_TABLE, 'w') as ints:
@@ -100,12 +101,29 @@ class JobController(object):
             self.variables = sql_exec.variables
             del sql_exec
 
+    def step_by_step(self):
+        yes = set(['yes','y', 'ye', ''])
+        no = set(['no','n'])
+        choice = raw_input().lower()
+        if choice in yes:
+            return True
+        elif choice in no:
+            return False
+        else:
+            print "Please respond with 'yes' or 'no'"
+
     def run_job(self):
         batch_items = None
         batch = None
         for job_syntax_item in self.job_syntax:
             if not job_syntax_item:
                 continue
+            if self.debug_steps:
+                print SqlExecutor.prepare_query_put_vars(
+                    job_syntax_item['line'], self.variables)
+                print "continue execution? y/n"
+                if not self.step_by_step():
+                    exit(0)
             if BATCH_KEY in job_syntax_item:
                 self.run_batch_(job_syntax_item)
             else:
@@ -116,6 +134,8 @@ class JobController(object):
         batch_param_name = job_syntax_item[BATCH_BEGIN_KEY][1]
         batch_syntax_items = job_syntax_item[BATCH_KEY]
         batch_params = self.variables[BATCH_PARAMS_KEY]
+        getLogger(__name__).info("batch params list %s",
+                                 batch_params )
         # loop through batch parameters list
         for param_idx in xrange(len(batch_params)):
             param = batch_params[param_idx]
@@ -127,23 +147,38 @@ class JobController(object):
                       batch_param_name, param )
             # prepare variables for external batch
             external_vars = {}
+            print self.variables
             for key, val in self.variables.iteritems():
                 if type(val) is not list:
                     external_vars[key] = val
             #run batches sequentially
-            self.external_exec.wait_for_complete()
-            self.run_external_batch(param_idx, self.config_file.name,
-                                    batch_syntax_items, external_vars)
-        res = self.external_exec.wait_for_complete()
+            #self.external_exec.wait_for_complete()
+            if 0:
+                self.run_external_batch(param_idx, self.config_file,
+                                        batch_syntax_items, external_vars)
+            else:
+                self.run_internal_batch(param_idx, self.config_file,
+                                        batch_syntax_items, external_vars)
+        #res = self.external_exec.wait_for_complete()
 
-    def run_external_batch(self, idx, config_filename,
+    def run_internal_batch(self, idx, config_filename,
+                           job_syntax_items, variables):
+        batch_job = JobController(self.config_file.name,
+                                  self.endpoints.endpoint_names,
+                                  job_syntax_items,
+                                  variables,
+                                  self.debug_steps)
+        batch_job.run_job()
+        del batch_job
+
+    def run_external_batch(self, idx, config_file,
                            job_syntax_items, variables):
         text_vars = ''
         for key, val in variables.iteritems():
             text_vars += ' --var %s %s' % (key, val)
-        cmd_fmt = 'python mriya_dmt.py --conf-file {conf_file} --job-stdin \
---src-name "{src}" --dst-name "{dst}" {variables}'
-        cmd = cmd_fmt.format(conf_file=config_filename,
+        cmd_fmt = 'python mriya_dmt.py --conf-file {conf_file} \
+--job-stdin --src-name "{src}" --dst-name "{dst}" {variables}'
+        cmd = cmd_fmt.format(conf_file=config_file.name,
                              src=self.endpoints.endpoint_names['src'],
                              dst=self.endpoints.endpoint_names['dst'],
                              variables=text_vars)
@@ -155,7 +190,8 @@ class JobController(object):
     def batch_input_lines(self, job_syntax_items):
         res = ''
         for item in job_syntax_items:
-            res += item[LINE_KEY] + '\n'
+            if item:
+                res += item[LINE_KEY] + '\n'
         return res
 
     def post_operation(self, job_syntax_item):
@@ -192,4 +228,5 @@ class JobController(object):
                 getLogger(__name__).error('Unsupported operation: %s',
                                           opname)
                 assert(0)
+
 

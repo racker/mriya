@@ -136,7 +136,7 @@ class JobSyntax(object):
     @staticmethod
     def parse_line(line):
         values = {}
-        if line.find('--') == 0:
+        if line.lstrip().find('--') == 0:
             return values
         start_pos = 0
         transm_pos = line.find(TRANSMITTER, start_pos)
@@ -152,7 +152,8 @@ class JobSyntax(object):
             values = JobSyntax.parse_transmitter_value(values,
                                                        line[start_pos:])
             transm_pos = line.find(TRANSMITTER, start_pos)
-        values[LINE_KEY] = line
+        if values:
+            values[LINE_KEY] = line
         return values
     
     @staticmethod
