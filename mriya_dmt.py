@@ -6,6 +6,7 @@ __email__ = "yaroslav.litvinov@rackspace.com"
 
 import argparse
 import glob
+import os.path
 from sys import stdin
 from logging import getLogger
 from mriya.job_syntax_extended import JobSyntaxExtended
@@ -14,10 +15,13 @@ from mriya.log import loginit
 
 def run_job_from_file(config_file, job_file, endpoints, variables,
                       debug_steps):
+    jobs_dir = os.path.dirname(job_file.name)
     macro_files = {}
-    for macro_file in glob.glob('macro_*.sql'):
-        print "macro", macro_file.name
-        macro_files[macro_file.name] = macro_file.readlines()
+    for macro_filename in glob.glob('%s/macro_*.sql' % jobs_dir):
+        with open(macro_filename) as macro_file:
+            macro_name = os.path.basename(macro_filename).split('.')[0]
+            print "macro_name", macro_name
+            macro_files[macro_name] = macro_file.readlines()
     # main script data
     job_syntax = JobSyntaxExtended(job_file.readlines(),
                                    macro_files)

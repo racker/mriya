@@ -191,7 +191,7 @@ class JobSyntax(object):
         elif key == MACRO_KEY:
             # support up to two params in the hardcoded way
             values[key] = val
-            if len(key_value) == 4:
+            if len(key_value) >= 4:
                 key2 = key_value[2].strip()
                 value2 = key_value[3].strip()
                 values[REPLACE_KEY] = {key2: value2}
