@@ -5,16 +5,23 @@ __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
 import argparse
+import glob
 from sys import stdin
 from logging import getLogger
 from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_controller import JobController
 from mriya.log import loginit
 
-def run_job_from_file(config, job_file, endpoints, variables,
+def run_job_from_file(config_file, job_file, endpoints, variables,
                       debug_steps):
-    job_syntax = JobSyntaxExtended(job_file.readlines())
-    job_controller = JobController(config.name,
+    macro_files = {}
+    for macro_file in glob.glob('macro_*.sql'):
+        print "macro", macro_file.name
+        macro_files[macro_file.name] = macro_file.readlines()
+    # main script data
+    job_syntax = JobSyntaxExtended(job_file.readlines(),
+                                   macro_files)
+    job_controller = JobController(config_file.name,
                                    endpoints,
                                    job_syntax,
                                    variables,

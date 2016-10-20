@@ -7,15 +7,19 @@ __email__ = "yaroslav.litvinov@rackspace.com"
 from logging import getLogger
 from mriya.job_syntax import BATCH_BEGIN_KEY, BATCH_END_KEY
 from mriya.job_syntax import JobSyntax, QUERY_KEY
+from mriya.job_syntax import MACRO_KEY, REPLACE_KEY
 from mriya.log import loginit
 
 BATCH_KEY = 'batch'
 
 class JobSyntaxExtended(JobSyntax):
 
-    def __init__(self, raw_lines):
-        super(JobSyntaxExtended, self).__init__(raw_lines)
+    def __init__(self, main, macroses={}):
+        super(JobSyntaxExtended, self).__init__(main)
+        # now self.values has parsed items
         loginit(__name__)
+        self.values = JobSyntaxExtended.integrate_macros_into_job_items(
+            self.values, macroses)
         self.values_extended = self.parse_lines_extended(self.values)
 
     def __iter__(self):
@@ -27,6 +31,40 @@ class JobSyntaxExtended(JobSyntax):
 
     def items(self):
         return self.values_extended
+
+    @staticmethod
+    def replace_in_lines(lines, replaces):
+        if replaces:
+            res = []
+            for line in lines:
+                for replace_key, replace_value in replaces.iteritems():
+                    line = line.replace('{%s}' % replace_key,
+                                        replace_value)
+                res.append(line)
+        else:
+            res = lines
+        return res
+
+    @staticmethod
+    def integrate_macros_into_job_items(job_syntax_items, macroses):
+        if macroses:
+            res = []
+            for item in job_syntax_items:
+                if MACRO_KEY in item:
+                    macro_name = item[MACRO_KEY]
+                    if REPLACE_KEY in item:
+                        macro_lines = JobSyntaxExtended.replace_in_lines(
+                            macroses[macro_name],
+                            item[REPLACE_KEY])
+                    else:
+                        macro_lines = macroses[macro_name]
+                    macro_job_syntax_lines = JobSyntax(macro_lines)
+                    res.extend(macro_job_syntax_lines)
+                else:
+                    res.append(item)
+        else:
+            res = job_syntax_items
+        return res
 
     def batch_var_name(self, watch_batch_var, job_syntax_item):
         if BATCH_BEGIN_KEY in job_syntax_item and not watch_batch_var:

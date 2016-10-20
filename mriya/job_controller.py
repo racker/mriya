@@ -119,7 +119,7 @@ class JobController(object):
             if not job_syntax_item:
                 continue
             if self.debug_steps:
-                print SqlExecutor.prepare_query_put_vars(
+                print "NEXT SQL:", SqlExecutor.prepare_query_put_vars(
                     job_syntax_item['line'], self.variables)
                 print "continue execution? y/n"
                 if not self.step_by_step():
@@ -163,7 +163,8 @@ class JobController(object):
 
     def run_internal_batch(self, idx, config_filename,
                            job_syntax_items, variables):
-        lines = [item[LINE_KEY] + '\n' for item in job_syntax_items]
+        lines = [item[LINE_KEY] + '\n' for item in job_syntax_items
+                 if LINE_KEY in item]
         job_syntax = JobSyntaxExtended(lines)
         batch_job = JobController(self.config_file.name,
                                   self.endpoints.endpoint_names,

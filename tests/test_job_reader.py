@@ -24,7 +24,11 @@ endpoint_names = {'dst': 'test', 'src': 'test'}
 UAT_SECTION = 'uat'
 
 def assert_job_syntax_lines(res_syntax_items, expected):
-    assert len(res_syntax_items) == len(expected)
+    try:
+        assert len(res_syntax_items) == len(expected)
+    except:
+        PrettyPrinter(indent=4).pprint(res_syntax_items)
+        raise
     for idx in xrange(len(res_syntax_items)):
         res = res_syntax_items[idx]
         if res:
@@ -53,12 +57,17 @@ def test_job_syntax():
     lines = ['--something', #will not be added to parsed values
              'SELECT 1 => csv:const1',
              'SELECT 1 => var:MIN',
-             'SELECT f1, (SELECT f2 FROM csv.one_ten) as f10 FROM csv.one_ten, 9; => csv:final => dst:insert:foo',
-             'SELECT 1 as bacth1 from csv.some_csv; => batch_begin:batch1:BATCH',
-             'SELECT 1 from dst.some_object WHERE b=a => csv:some_csv => batch_end:BATCH',
+             'SELECT f1, (SELECT f2 FROM csv.one_ten) as f10 FROM \
+csv.one_ten, 9; => csv:final => dst:insert:foo',
+             'SELECT 1 as bacth1 from csv.some_csv; \
+=> batch_begin:batch1:BATCH',
+             'SELECT 1 from dst.some_object WHERE b=a \
+=> csv:some_csv => batch_end:BATCH',
              '=> batch_end:BATCH',
-             'SELECT 1 as test, 2 as test2; => csv:foo:cache => dst:insert:test_table:new_ids',
-             'SELECT 1 as test, 2 as test2; => csv:foo => dst:insert:test_table']
+             'SELECT 1 as test, 2 as test2; => csv:foo:cache \
+=> dst:insert:test_table:new_ids',
+             'SELECT 1 as test, 2 as test2; => csv:foo \
+=> dst:insert:test_table']
     expected = [
         {},
         {'query': 'SELECT 1', 'csv': 'const1'},
@@ -84,19 +93,24 @@ def test_job_syntax():
     assert_job_syntax_lines(job_syntax.items(), expected)
 
 def test_var_csv():
+    macro_lines = ['SELECT i from csv.ints10000 WHERE i>=CAST(10 as INTEGER) \
+LIMIT 2; => batch_begin:i:NESTED',
+                   'SELECT {NESTED}; => var:foo2',
+                   '=> batch_end:NESTED',
+                   "SELECT '{STATIC_VAR}'; => var:static_var"]
+
     lines = ['SELECT 1; => var:one',
              'SELECT 9; => var:nine',
              'SELECT Id FROM src.Account LIMIT 1 => var:sfvar',
              'SELECT {one} as f1, {nine}+1 as f2; => csv:one_ten',
-             'SELECT f1, {nine} as f9, (SELECT f2 FROM csv.one_ten) as f10 FROM csv.one_ten; => csv:one_nine_ten',
-             'SELECT i from csv.ints10000 WHERE i>=2 LIMIT 2; => batch_begin:i:PARAM',
+             'SELECT f1, {nine} as f9, (SELECT f2 FROM csv.one_ten) as f10 \
+FROM csv.one_ten; => csv:one_nine_ten',
+             'SELECT i from csv.ints10000 WHERE i>=2 LIMIT 2; \
+=> batch_begin:i:PARAM',
              'SELECT {PARAM}; => var:foo',
-             'SELECT i from csv.ints10000 WHERE i>=CAST(10 as INTEGER) LIMIT 2; => batch_begin:i:NESTED',
-             'SELECT {NESTED}; => var:foo2',
-             '=> batch_end:NESTED',
+             '=> macro:macro_test_batch:STATIC_VAR:something',
              '=> batch_end:PARAM',
              'SELECT {PARAM}; => var:final_test']
-    job_syntax = JobSyntaxExtended(lines)
 
     expected = [{'query': 'SELECT 1;', 'var': 'one'},
                 {'query': 'SELECT 9;', 'var': 'nine'},
@@ -122,11 +136,16 @@ i>=CAST(10 as INTEGER) LIMIT 2; => batch_begin:i:NESTED',
                            {'query': 'SELECT {NESTED};', 'var': 'foo2',
                             'line': 'SELECT {NESTED}; => var:foo2'},
                            {'batch_end': 'NESTED', 'query': '',
-                            'line': '=> batch_end:NESTED'}]},
+                            'line': '=> batch_end:NESTED'},
+                           {'query': "SELECT 'something';",
+                            'var': 'static_var',
+                            'line': "SELECT 'something'; => var:static_var"}
+                       ]},
                 {'query': 'SELECT {PARAM};', 'var': 'final_test'}
             ]
 
-    job_syntax_extended = JobSyntaxExtended(lines)
+    job_syntax_extended = JobSyntaxExtended(
+        lines, {'macro_test_batch': macro_lines })
     assert_job_syntax_lines(job_syntax_extended.items(), expected)
     try:
         os.remove('one_nine_ten.csv')
@@ -135,7 +154,7 @@ i>=CAST(10 as INTEGER) LIMIT 2; => batch_begin:i:NESTED',
     with open(config_filename) as conf_file:
         job_controller = JobController(conf_file.name,
                                        endpoint_names,
-                                       job_syntax,
+                                       job_syntax_extended,
                                        {}, False)
     job_controller.run_job()
     res_batch_params = job_controller.variables[BATCH_PARAMS_KEY]
@@ -150,6 +169,7 @@ i>=CAST(10 as INTEGER) LIMIT 2; => batch_begin:i:NESTED',
 
 def test_job_controller():
     notch = randint(0, 1000000)
+    print "notch", notch
     lines = ["SELECT Id,Account_Birthday__c,Name FROM src.Account LIMIT 2; \
 => csv:some_data:cache",
              "SELECT Id from csv.some_data LIMIT 1; => var:id_test",

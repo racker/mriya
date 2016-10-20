@@ -15,6 +15,7 @@ SRC_KEY = 'src'
 FROM_KEY = 'from' # values 'dst' \ 'src' \ 'csv'
 QUERY_KEY = 'query'
 LINE_KEY = 'line'
+MACRO_KEY = 'macro'
 
 BATCH_PARAMS_KEY = 'batch_params'
 BATCH_BEGIN_KEY = 'batch_begin'
@@ -29,6 +30,7 @@ OP_DELETE = 'delete'
 OBJNAME_KEY = 'objname'
 NEW_IDS_TABLE = 'new_ids_table'
 CACHE_KEY = 'cache'
+REPLACE_KEY = 'replace'
 
 # only sqlite related
 CSVLIST_KEY = 'csvlist'
@@ -186,6 +188,17 @@ class JobSyntax(object):
             values[key] = (val, val2)
         elif key == BATCH_END_KEY:
             values[key] = val
+        elif key == MACRO_KEY:
+            # support up to two params in the hardcoded way
+            values[key] = val
+            if len(key_value) == 4:
+                key2 = key_value[2].strip()
+                value2 = key_value[3].strip()
+                values[REPLACE_KEY] = {key2: value2}
+            if len(key_value) == 6:
+                key3 = key_value[4].strip()
+                value3 = key_value[5].strip()
+                values[REPLACE_KEY][key3] = value3
         else:
             print key, val
             assert(0)

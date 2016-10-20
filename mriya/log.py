@@ -7,7 +7,7 @@ __email__ = "yaroslav.litvinov@rackspace.com"
 import logging
 import sys
 
-LOGGING_LEVEL = logging.INFO
+LOGGING_LEVEL = logging.DEBUG
 
 def loginit(name):
     logging.basicConfig(level=LOGGING_LEVEL,
