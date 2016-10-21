@@ -27,6 +27,8 @@ def observer(refname, retcode, output):
         return (retcode, output.read())
 
 class SqliteExecutor(SqlExecutor):
+    table_columns = {}
+
     def __init__(self, job_syntax_item, variables):
         super(SqliteExecutor, self).__init__(job_syntax_item, variables)
         loginit(__name__)
@@ -41,6 +43,20 @@ class SqliteExecutor(SqlExecutor):
             if self.query and self.query[-1] != ';':
                 self.query += ';'
         return self.query
+
+    @staticmethod
+    def get_sub_str_between(query, start_str, end_str):
+        query = query.lower()
+        start = query.find(start_str) + len(start_str)
+        end = query.find(end_str)
+        return query[start:end]
+
+    @staticmethod
+    def get_query_columns(query):
+        cols = SqliteExecutor.get_sub_str_between(query,
+                                                  'select', 'from')
+        res = [x.strip().split(' ')[-1] for x in cols.split(',')]
+        return [x.split('.')[-1] for x in res]
 
     def _create_script(self, variables):
         imports = ''
@@ -66,6 +82,16 @@ class SqliteExecutor(SqlExecutor):
                                               query=self.get_query())
         return input_data
 
+    def fix_empty_res_table(self, table_name):
+        size = SqlExecutor.csv_size(table_name)
+        if size == 0:
+            getLogger(__name__).info("Fix empty csv for table %s",
+                                     table_name)
+            cols = SqliteExecutor.get_query_columns(self.get_query())
+            header = ','.join(cols)+'\n'
+            with open(self.csv_name(table_name), 'w') as f:
+                f.write(header)
+
     def execute(self):
         executor = Executor()
         cmd = 'sqlite3 -batch'
@@ -76,6 +102,8 @@ class SqliteExecutor(SqlExecutor):
                          output_pipe=True)
         res = executor.poll_for_complete(observer)
         del executor
+        if CSV_KEY in self.job_syntax_item:
+            self.fix_empty_res_table(self.job_syntax_item[CSV_KEY])
         res = res['refname']
         if res[0] != 0:
             raise Exception("Sqlite query error", self.get_query())
@@ -91,6 +119,10 @@ class SqliteExecutor(SqlExecutor):
             param_field_name = self.job_syntax_item[BATCH_BEGIN_KEY][0]
             stream = StringIO(res[1])
             csv_batch_params =  get_bulk_data_from_csv_stream(stream)
-            field_idx = csv_batch_params.fields.index(param_field_name)
-            values = [x[field_idx] for x in csv_batch_params.rows]
-            self.variables[BATCH_PARAMS_KEY] = values
+            if csv_batch_params.fields:
+                field_idx = csv_batch_params.fields.index(param_field_name)
+                values = [x[field_idx] for x in csv_batch_params.rows]
+                self.variables[BATCH_PARAMS_KEY] = values
+            else:
+                # no batches to process
+                self.variables[BATCH_PARAMS_KEY] = []

@@ -130,13 +130,19 @@ class JobController(object):
                 self.handle_job_item_(job_syntax_item)
 
     def run_batch_(self, job_syntax_item):
+        # run batch_begin query and save list of batches to var
         self.handle_job_item_(job_syntax_item)
+        # run batch itself
         batch_param_name = job_syntax_item[BATCH_BEGIN_KEY][1]
         batch_syntax_items = job_syntax_item[BATCH_KEY]
         batch_params = self.variables[BATCH_PARAMS_KEY]
         getLogger(__name__).info("batch params list %s",
                                  batch_params )
         # loop through batch parameters list
+        if not batch_params:
+            getLogger(__name__).info("Skip empty batch %s",
+                                     batch_param_name)
+            return
         for param_idx in xrange(len(batch_params)):
             param = batch_params[param_idx]
             self.variables[batch_param_name] = param
@@ -163,12 +169,9 @@ class JobController(object):
 
     def run_internal_batch(self, idx, config_filename,
                            job_syntax_items, variables):
-        lines = [item[LINE_KEY] + '\n' for item in job_syntax_items
-                 if LINE_KEY in item]
-        job_syntax = JobSyntaxExtended(lines)
         batch_job = JobController(self.config_file.name,
                                   self.endpoints.endpoint_names,
-                                  job_syntax,
+                                  job_syntax_items,
                                   variables,
                                   self.debug_steps)
         batch_job.run_job()

@@ -20,7 +20,8 @@ class JobSyntaxExtended(JobSyntax):
         loginit(__name__)
         self.values = JobSyntaxExtended.integrate_macros_into_job_items(
             self.values, macroses)
-        self.values_extended = self.parse_lines_extended(self.values)
+        self.values_extended = JobSyntaxExtended.parse_recursive(
+            self.values)
 
     def __iter__(self):
         for lst in self.values_extended:
@@ -74,21 +75,33 @@ class JobSyntaxExtended(JobSyntax):
             watch_batch_var = None
         return watch_batch_var
         
-    def parse_lines_extended(self, self_values):
-        values = []
+    @staticmethod
+    def parse_recursive(self_values):
+        res = []
         batch_items = []
-        watch_batch = None
+        begin_counter = 0
+        end_counter = 0
         for job_syntax_item in self_values:
-            if not watch_batch:
-                values.append(job_syntax_item)
-            elif not (BATCH_END_KEY in job_syntax_item and \
-                      job_syntax_item[BATCH_END_KEY] == watch_batch):
-                # add all related to batch except end batch flag
+            if BATCH_BEGIN_KEY in job_syntax_item:
+                begin_counter += 1
+            if BATCH_END_KEY in job_syntax_item:
+                end_counter += 1
+            
+            if begin_counter > end_counter:
                 batch_items.append(job_syntax_item)
-            existing_batch = watch_batch
-            watch_batch = self.batch_var_name(watch_batch, job_syntax_item)
-            # if all batch items are located
-            if existing_batch and not watch_batch:
-                values[-1][BATCH_KEY] = batch_items
-        return values
-
+            elif begin_counter == end_counter and begin_counter != 0:
+                # add all saved items, 
+                # skip first batch_begin, last batch_end
+                nested = JobSyntaxExtended.parse_recursive(
+                    batch_items[1:-1])
+                batch = batch_items[0]
+                batch[BATCH_KEY] = nested
+                res.append(batch)
+                del batch_items[:]
+                begin_counter = 0
+                end_counter = 0
+            elif begin_counter != 0 or end_counter != 0:
+                assert(0)
+            else:
+                res.append(job_syntax_item)
+        return res

@@ -42,6 +42,12 @@ def assert_job_syntax_lines(res_syntax_items, expected):
             PrettyPrinter(indent=4).pprint(res)
             raise
 
+def test_columns():
+    query = "SELECT foo, (SELECT 1 WHERE 0=1) as foo2, foo as foo3, \
+a.foo4 FROM "
+    res = SqliteExecutor.get_query_columns(query)
+    print res
+    assert(res == ['foo', 'foo2', 'foo3', 'foo4'])
 
 def test_read():
     text = 'SELECT \\\n\
@@ -199,6 +205,7 @@ WHERE Id = '{id_test}' \
 
 if __name__ == '__main__':
     loginit(__name__)
+    test_columns()
     test_read()
     test_job_syntax()
     test_var_csv()
