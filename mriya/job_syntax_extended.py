@@ -86,6 +86,8 @@ class JobSyntaxExtended(JobSyntax):
                 begin_counter += 1
             if BATCH_END_KEY in job_syntax_item:
                 end_counter += 1
+                if begin_counter == end_counter:
+                    batch_items.append(job_syntax_item)
             
             if begin_counter > end_counter:
                 batch_items.append(job_syntax_item)
