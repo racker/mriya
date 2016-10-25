@@ -8,8 +8,10 @@ import logging
 from StringIO import StringIO
 from logging import getLogger
 from mriya.sql_executor import SqlExecutor
+from mriya.job_syntax import JobSyntax
 from mriya.job_syntax import CSVLIST_KEY, QUERY_KEY, CSV_KEY, VAR_KEY
 from mriya.job_syntax import BATCH_BEGIN_KEY, BATCH_PARAMS_KEY
+from mriya.job_syntax import CONST_KEY, DST_KEY, SRC_KEY
 from mriya.opexecutor import Executor
 from mriya.bulk_data import get_bulk_data_from_csv_stream
 from mriya.log import loginit
@@ -33,12 +35,25 @@ class SqliteExecutor(SqlExecutor):
         super(SqliteExecutor, self).__init__(job_syntax_item, variables)
         loginit(__name__)
         self.query = None
+        self.query = self.get_query()
 
     def get_query(self):
         if not self.query:
             self.query = SqlExecutor.prepare_query_put_vars(
                 self.job_syntax_item[QUERY_KEY],
                 self.variables)
+            # get csvlist after variables substitution
+            values = JobSyntax.parse_query_params(self.get_query(), {})
+            if CSVLIST_KEY in values:
+                getLogger(__name__).info('Fix csvlist: %s',
+                                         values[CSVLIST_KEY])
+                self.job_syntax_item[CSVLIST_KEY] = values[CSVLIST_KEY]
+    
+            if not CONST_KEY in self.job_syntax_item:
+                self.query = self.query.replace(CSV_KEY+'.', '')
+                self.query = self.query.replace(DST_KEY+'.', '')
+                self.query = self.query.replace(SRC_KEY+'.', '')
+    
             # end query with ';' add if ';' not exist
             if self.query and self.query[-1] != ';':
                 self.query += ';'

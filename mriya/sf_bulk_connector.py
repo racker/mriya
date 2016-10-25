@@ -48,10 +48,10 @@ class SfBulkConnector(BaseBulkConnector):
                                           batch, opname, item[id_idx],
                                           item[error_idx])
 
-    def bulk_common_(self, op, objname, soql_or_csv):
+    def bulk_common_(self, op, objname, soql_or_csv, upsert_external_field=None):
         try:
             # create job
-            self.bulk.job_create(op, objname)
+            self.bulk.job_create(op, objname, upsert_external_field)
         
             # create batch
             batch_id = self.bulk.batch_create(soql_or_csv)
@@ -73,8 +73,9 @@ class SfBulkConnector(BaseBulkConnector):
         self.handle_op_returning_ids('insert', res)
         return res[1]
 
-    def bulk_upsert(self, objname, csv_data):
-        res = self.bulk_common_('upsert', objname, csv_data)
+    def bulk_upsert(self, objname, csv_data, upsert_external_field):
+        res = self.bulk_common_('upsert', objname, csv_data,
+                                upsert_external_field)
         self.handle_op_returning_ids('upsert', res)
         return res[1]
 

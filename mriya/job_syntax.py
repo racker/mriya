@@ -16,6 +16,7 @@ FROM_KEY = 'from' # values 'dst' \ 'src' \ 'csv'
 QUERY_KEY = 'query'
 LINE_KEY = 'line'
 MACRO_KEY = 'macro'
+CONST_KEY = 'const'
 
 BATCH_PARAMS_KEY = 'batch_params'
 BATCH_BEGIN_KEY = 'batch_begin'
@@ -98,12 +99,15 @@ class JobSyntax(object):
                                                    ',',
                                                    '(',
                                                    ')',
-                                                   ';'))
+                                                   ';',
+                                                   '\'',
+                                                   '"'))
         res.strip()
         return res
 
     @staticmethod
     def parse_query_params(query, values):
+        query = query.replace(';', ' ')
         while True:
             src_pos = query.find(SRC_KEY + '.')
             dst_pos = query.find(DST_KEY + '.')
@@ -141,21 +145,26 @@ class JobSyntax(object):
         if line.lstrip().find('--') == 0:
             return values
         start_pos = 0
+        start_query_pos = None
+        end_query_pos = None
         transm_pos = line.find(TRANSMITTER, start_pos)
         while transm_pos != -1:
-            if QUERY_KEY not in values:
-                query = line[start_pos:transm_pos].strip()
-                values = JobSyntax.parse_query_params(query, values)
-                query = query.replace(CSV_KEY+'.', '')
-                query = query.replace(DST_KEY+'.', '')
-                query = query.replace(SRC_KEY+'.', '')
-                values[QUERY_KEY] = query
+            if start_query_pos is None:
+                start_query_pos = start_pos
+            if end_query_pos is None:
+                end_query_pos = transm_pos
             start_pos = transm_pos + len(TRANSMITTER)
-            values = JobSyntax.parse_transmitter_value(values,
-                                                       line[start_pos:])
+            values = JobSyntax.parse_transmitter_value(
+                values, line[start_pos:])
             transm_pos = line.find(TRANSMITTER, start_pos)
-        if values:
-            values[LINE_KEY] = line
+        query = line[start_query_pos:end_query_pos].strip()
+        values = JobSyntax.parse_query_params(query, values)
+        if not CONST_KEY in values:
+            query = query.replace(CSV_KEY+'.', '')
+            query = query.replace(DST_KEY+'.', '')
+            query = query.replace(SRC_KEY+'.', '')
+        values[LINE_KEY] = line
+        values[QUERY_KEY] = query
         return values
     
     @staticmethod
@@ -175,7 +184,7 @@ class JobSyntax(object):
                 cache_flag = key_value[2].strip()
                 if cache_flag == CACHE_KEY:
                     values[CACHE_KEY] = True
-        elif key == VAR_KEY:
+        elif key == CONST_KEY:
             values[key] = val
         elif key == DST_KEY or key == SRC_KEY:
             objname_val = key_value[2].strip()

@@ -6,7 +6,8 @@ __email__ = "yaroslav.litvinov@rackspace.com"
 
 import os
 from logging import getLogger
-from mriya.job_syntax import JobSyntax, CSV_KEY
+from mriya.job_syntax import JobSyntax, CSV_KEY, QUERY_KEY
+from mriya.job_syntax import DST_KEY, SRC_KEY
 from mriya.log import loginit
 
 class SqlExecutor(object):
@@ -44,5 +45,7 @@ class SqlExecutor(object):
         return query
 
     def save_var(self, key, value):
+        if len(value) and value[0] == '"' and value[-1] == '"':
+            value = value[1:-1]
         self.variables[key] = value
         getLogger(__name__).info("set var: %s=%s", key, value)

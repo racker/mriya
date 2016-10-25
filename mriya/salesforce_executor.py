@@ -7,6 +7,7 @@ __email__ = "yaroslav.litvinov@rackspace.com"
 from logging import getLogger
 from mriya.sql_executor import SqlExecutor
 from mriya.job_syntax import QUERY_KEY, OBJNAME_KEY, CSV_KEY, VAR_KEY
+from mriya.job_syntax import CONST_KEY, DST_KEY, SRC_KEY
 from mriya.bulk_data import parse_batch_res_data
 from mriya.log import loginit
 
@@ -22,6 +23,10 @@ class SalesforceExecutor(SqlExecutor):
             self.query = SqlExecutor.prepare_query_put_vars(
                 self.job_syntax_item[QUERY_KEY],
                 self.variables)
+            if not CONST_KEY in self.job_syntax_item:
+                self.query = self.query.replace(CSV_KEY+'.', '')
+                self.query = self.query.replace(DST_KEY+'.', '')
+                self.query = self.query.replace(SRC_KEY+'.', '')
             # get rid of trailing ';' in query
             if self.query and self.query[-1] == ';':
                 self.query = self.query[:-1]

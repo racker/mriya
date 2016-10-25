@@ -21,37 +21,6 @@ from mriya.log import loginit
 config_filename = 'test-config.ini'
 endpoint_names = {'dst': 'test', 'src': 'test'}
 
-UAT_SECTION = 'uat'
-
-# def assert_job_syntax_lines(res_syntax_items, expected):
-#     for idx in xrange(len(res_syntax_items)):
-#         res = res_syntax_items[idx]
-#         if res:
-#             del res[LINE_KEY]
-#         exp = expected[idx]
-#         try:
-#             assert sorted(res.keys()) == sorted(exp.keys())
-#         except:
-#             logging.getLogger(__name__).info('FAILED idx: %d', idx)
-#             print res.keys()
-#             print exp.keys()
-#             raise
-#         for key in res.keys():
-#             if type(res[key]) is dict and exp[key] is dict:
-#                 assert_job_syntax_lines(res[key], exp[key])
-#             try:
-#                 assert res[key] == exp[key]
-#             except:
-#                 print key
-#                 print res[key]
-#                 print exp[key]
-#                 logging.getLogger(__name__).info('FAILED idx: %d', idx)
-#                 PrettyPrinter(indent=4).pprint(res)
-#                 PrettyPrinter(indent=4).pprint(exp)
-#                 raise
-#         logging.getLogger(__name__).info('OK idx: %d', idx)
-
-
 def assert_job_syntax_lines(res_syntax_items, expected):
     try:
         assert len(res_syntax_items) == len(expected)
@@ -136,7 +105,9 @@ LIMIT 2; => batch_begin:i:NESTED',
                    "SELECT '{STATIC_VAR}'; => var:static_var"]
 
     lines = ['SELECT 1; => var:one',
-             'SELECT "9"; => var:nine',
+             "SELECT 'csv.ints10000'; => var:CSV_INTS10000 => const:",
+             "SELECT * FROM {CSV_INTS10000} LIMIT 1; => var:VAR_0",
+             'SELECT "9+0"; => var:nine',
              'SELECT Id FROM src.Account LIMIT 1 => var:sfvar',
              'SELECT {one} as f1, {nine}+1 as f2; => csv:one_ten',
              'SELECT f1, {nine} as f9, (SELECT f2 FROM csv.one_ten) as f10 \
@@ -149,14 +120,22 @@ FROM csv.one_ten; => csv:one_nine_ten',
              'SELECT {PARAM}; => var:final_test']
 
     expected = [{'query': 'SELECT 1;', 'var': 'one'},
-                {'query': 'SELECT "9";', 'var': 'nine'},
+                {'query': "SELECT 'csv.ints10000';",
+                 'var': 'CSV_INTS10000',
+                 'csvlist': ['ints10000'],
+                 'const': '',
+                 'from': 'csv'},
+                {'query': "SELECT * FROM {CSV_INTS10000} LIMIT 1;",
+                 'var': 'VAR_0'},
+                {'query': 'SELECT "9+0";', 'var': 'nine'},
                 {'query': 'SELECT Id FROM Account LIMIT 1', 
                  'var': 'sfvar', 'from': 'src', 'objname': 'Account'},
                 {'query': 'SELECT {one} as f1, {nine}+1 as f2;',
                  'csv': 'one_ten'},
                 {'query': 'SELECT f1, {nine} as f9, (SELECT f2 FROM \
 one_ten) as f10 FROM one_ten;',
-                 'csvlist': ['one_ten'], 'csv': 'one_nine_ten',
+                 'csvlist': ['one_ten'],
+                 'csv': 'one_nine_ten',
                  'from': 'csv'},
                 {   'batch': [   {   'line': 'SELECT {PARAM}; => var:foo',
                                      'query': 'SELECT {PARAM};',

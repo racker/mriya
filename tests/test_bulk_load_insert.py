@@ -36,7 +36,7 @@ mriya,"2005-08-13","Street_Billing_Address\n\
 2YNSCQEHFX",Account\n\
 mriya,"2000-10-23","Street_Billing_Address, 7VLWJ7CMQX",Account\n'
 
-TEST_CSV_INSERT2 = 'Name,Account_Birthday__c,Billing_Address__c,type\n\
+TEST_CSV_UPSERT = 'Name,Account_Birthday__c,Billing_Address__c,type\n\
 mriya,#N/A,Street_Billing_Address_CO9S63EMH4,Account\n'
 
 def columns_compare(col1, col2):
@@ -116,16 +116,17 @@ def test_insert_update():
     with open(config_file, 'r') as conf_file:
         config.read_file(conf_file)
     conn_param = get_conn_param(config['test'])
-    print "ok"
     auth_token = AuthToken(conn_param, 'sessions.ini')
     conn_param = auth_token.conn_param_with_token()
     conn = SfBulkConnector(conn_param)
 
-    ####### INSERT #####
-    csv_data = TEST_CSV_INSERT2
-    bulk_result_ids = conn.bulk_insert('Account', csv_data)
-    # Retrieve ids of inserted results
+    ####### UPSERT #####
+    csv_data = TEST_CSV_UPSERT
+    bulk_result_ids = conn.bulk_upsert('Account', csv_data,
+                                       None)
+    # Retrieve ids of upserted results
     result_ids = parse_batch_res_data(bulk_result_ids)
+    print "ok upsert"
 
     ###### UPDATE #####
     selected_with_ids = fetch_records_by_returned_ids(
@@ -160,6 +161,6 @@ def test_insert_update():
 
 
 if __name__ == '__main__':
-    test_insert_load()
     test_insert_update()
+    test_insert_load()
     
