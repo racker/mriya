@@ -36,8 +36,8 @@ REPLACE_KEY = 'replace'
 # only sqlite related
 CSVLIST_KEY = 'csvlist'
 
-
 from logging import getLogger
+from itertools import izip
 from mriya.log import loginit
 
 class JobSyntax(object):
@@ -173,43 +173,42 @@ class JobSyntax(object):
     def parse_transmitter_value(values, pair):
         if pair.find(TRANSMITTER) != -1:
             pair = pair[:pair.find(TRANSMITTER)]
-        key_value = pair.split(':')
+        key_vals = [x.strip() for x in pair.split(':')]
         try:
-            key = key_value[0].strip()
-            val = key_value[1].strip()
+            key = key_vals[0]
+            val = key_vals[1]
         except:
             getLogger(__name__).error('Error: %s', pair)
             raise
         if key == CSV_KEY or key == VAR_KEY:
             values[key] = val
-            if len(key_value) > 2:
-                cache_flag = key_value[2].strip()
+            if len(key_vals) > 2:
+                cache_flag = key_vals[2]
                 if cache_flag == CACHE_KEY:
-                    values[CACHE_KEY] = True
+                    values[CACHE_KEY] = ''
         elif key == CONST_KEY:
             values[key] = val
         elif key == DST_KEY or key == SRC_KEY:
-            objname_val = key_value[2].strip()
+            objname_val = key_vals[2]
             values[OP_KEY] = val
             values[key] = objname_val
-            if val == OP_INSERT and len(key_value) > 3:
-                values[NEW_IDS_TABLE] = key_value[3].strip()
+            if val == OP_INSERT and len(key_vals) > 3:
+                values[NEW_IDS_TABLE] = key_vals[3]
         elif key == BATCH_BEGIN_KEY:
-            val2 = key_value[2].strip()
+            val2 = key_vals[2]
             values[key] = (val, val2)
         elif key == BATCH_END_KEY:
             values[key] = val
         elif key == MACRO_KEY:
-            # support up to two params in the hardcoded way
             values[key] = val
-            if len(key_value) >= 4:
-                key2 = key_value[2].strip()
-                value2 = key_value[3].strip()
-                values[REPLACE_KEY] = {key2: value2}
-            if len(key_value) == 6:
-                key3 = key_value[4].strip()
-                value3 = key_value[5].strip()
-                values[REPLACE_KEY][key3] = value3
+            # count of rest params must be even
+            assert not len(key_vals) % 2
+            it = iter(key_vals[2:])
+            for key, val in izip(it, it):
+                if REPLACE_KEY not in values:
+                    values[REPLACE_KEY] = {key: val}
+                else:
+                    values[REPLACE_KEY][key] = val
         else:
             print key, val
             assert(0)
