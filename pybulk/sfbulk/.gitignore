@@ -1,0 +1,7 @@
+*.pyc
+*.swp
+*.swo
+*.swn
+*.swm
+examples/*
+builds/
