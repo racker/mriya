@@ -89,7 +89,6 @@ csv.one_ten, 9; => csv:final => dst:insert:foo',
              'SELECT 1 as test, 2 as test2; => csv:foo \
 => dst:insert:test_table']
     expected = [
-        {},
         {'query': 'SELECT 1', 'csv': 'const1'},
         {'query': 'SELECT 1', 'var': 'MIN'},
         {'query': 'SELECT f1, (SELECT f2 FROM one_ten) as f10 FROM one_ten, 9;',
