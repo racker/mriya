@@ -4,9 +4,11 @@ __author__ = "Yaroslav Litvinov"
 __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
+import re
 import logging
 from StringIO import StringIO
 from logging import getLogger
+from sets import Set
 from mriya.sql_executor import SqlExecutor
 from mriya.job_syntax import JobSyntax
 from mriya.job_syntax import CSVLIST_KEY, QUERY_KEY, CSV_KEY, VAR_KEY
@@ -47,7 +49,13 @@ class SqliteExecutor(SqlExecutor):
             if CSVLIST_KEY in values:
                 getLogger(__name__).info('Fix csvlist: %s',
                                          values[CSVLIST_KEY])
-                self.job_syntax_item[CSVLIST_KEY] = values[CSVLIST_KEY]
+                if CSVLIST_KEY in self.job_syntax_item:
+                    tmp = self.job_syntax_item[CSVLIST_KEY]
+                    tmp.extend(values[CSVLIST_KEY])
+                    # filter out duplicate items
+                    self.job_syntax_item[CSVLIST_KEY] = list(Set(tmp))
+                else:
+                    self.job_syntax_item[CSVLIST_KEY] = values[CSVLIST_KEY]
     
             if not CONST_KEY in self.job_syntax_item:
                 self.query = self.query.replace(CSV_KEY+'.', '')
@@ -68,6 +76,8 @@ class SqliteExecutor(SqlExecutor):
 
     @staticmethod
     def get_query_columns(query):
+        regex = r'\(.*?\)'
+        query = re.sub(regex, '_', query)
         cols = SqliteExecutor.get_sub_str_between(query,
                                                   'select', 'from')
         res = [x.strip().split(' ')[-1] for x in cols.split(',')]

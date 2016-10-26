@@ -45,8 +45,23 @@ def test_columns():
     query = "SELECT foo, (SELECT 1 WHERE 0=1) as foo2, foo as foo3, \
 a.foo4 FROM "
     res = SqliteExecutor.get_query_columns(query)
-    print res
-    assert(res == ['foo', 'foo2', 'foo3', 'foo4'])
+    try:
+        assert(res == ['foo', 'foo2', 'foo3', 'foo4'])
+    except:
+        print res
+        raise
+
+    query = " SELECT Id as id2, \
+b.bomba, (SELECT a.Id FROM foo a WHERE a.nope = b.Id) as id__c, \
+(SELECT a.Id from foo2 a WHERE a.ggg = b.nnn) as super \
+FROM sometable b WHERE ..."
+    res = SqliteExecutor.get_query_columns(query)
+    try:
+        assert(res == ['id2', 'bomba', 'id__c', 'super'])
+    except:
+        print res
+        raise
+
 
 def test_read():
     text = 'SELECT \\\n\
@@ -89,7 +104,7 @@ csv.one_ten, 9; => csv:final => dst:insert:foo',
         {'query': '', 'batch_end': 'BATCH'},
         {'query': 'SELECT 1 as test, 2 as test2;',
          'op': 'insert', 'dst' : 'test_table', 'csv': 'foo',
-         'cache': True, 'new_ids_table': 'new_ids'},
+         'cache': '', 'new_ids_table': 'new_ids'},
         {'query': 'SELECT 1 as test, 2 as test2;', 'csv': 'foo',
          'op': 'insert', 'dst' : 'test_table'}
     ]
@@ -210,6 +225,7 @@ WHERE Id = '{id_test}' \
         assert 2 == len(csv_data.rows)
         for row in csv_data.rows:
             assert len(row[id_idx]) >= 15
+
 
 if __name__ == '__main__':
     loginit(__name__)

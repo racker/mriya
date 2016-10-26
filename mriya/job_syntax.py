@@ -90,7 +90,9 @@ class JobSyntax(object):
     def parse_lines(lines):
         values = []
         for line in lines:
-            values.append(JobSyntax.parse_line(line))
+            job_syntax_item = JobSyntax.parse_line(line)
+            if LINE_KEY in job_syntax_item and job_syntax_item[LINE_KEY]:
+                values.append(job_syntax_item)
         return values
 
     @staticmethod
