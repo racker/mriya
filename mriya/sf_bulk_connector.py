@@ -10,8 +10,6 @@ from mriya.base_connector import BaseBulkConnector
 from mriya.bulk_data import parse_batch_res_data
 from mriya.log import loginit
 
-#IGNORE_SF_RESPONSE = 'Records not found for this query'
-
 class SfBulkConnector(BaseBulkConnector):
 
     def __init__(self, conn_param):
@@ -65,7 +63,8 @@ class SfBulkConnector(BaseBulkConnector):
             self.bulk.job_close()
             return (batch_id, batch_res)
         except:
-            self.bulk.job_close()
+            if self.bulk.jobinfo.id:
+                self.bulk.job_close()
             raise
 
     def bulk_insert(self, objname, csv_data):

@@ -143,11 +143,10 @@ class JobController(object):
             getLogger(__name__).info("Skip empty batch %s",
                                      batch_param_name)
             return
-        for param_idx in xrange(len(batch_params)):
-            param = batch_params[param_idx]
+        for param in batch_params:
             self.variables[batch_param_name] = param
             getLogger(__name__).info("------ batch %s/%s",
-                                     param_idx, len(batch_params))
+                                     param, batch_params)
             getLogger(__name__)\
                 .info("set batch var: %s=%s",
                       batch_param_name, param )
@@ -160,14 +159,14 @@ class JobController(object):
             #run batches sequentially
             #self.external_exec.wait_for_complete()
             if 0:
-                self.run_external_batch(param_idx, self.config_file,
+                self.run_external_batch(param, self.config_file,
                                         batch_syntax_items, external_vars)
             else:
-                self.run_internal_batch(param_idx, self.config_file,
+                self.run_internal_batch(param, self.config_file,
                                         batch_syntax_items, external_vars)
         #res = self.external_exec.wait_for_complete()
 
-    def run_internal_batch(self, idx, config_filename,
+    def run_internal_batch(self, _, config_filename,
                            job_syntax_items, variables):
         batch_job = JobController(self.config_file.name,
                                   self.endpoints.endpoint_names,
@@ -177,7 +176,7 @@ class JobController(object):
         batch_job.run_job()
         del batch_job
 
-    def run_external_batch(self, idx, config_file,
+    def run_external_batch(self, batch_param, config_file,
                            job_syntax_items, variables):
         text_vars = ''
         for key, val in variables.iteritems():
@@ -190,7 +189,7 @@ class JobController(object):
                              variables=text_vars)
         input_data = self.batch_input_text_data(job_syntax_items)
         getLogger(__name__).info('Invoke cmd:%s', cmd)
-        self.external_exec.execute('batch_%d' % idx, cmd,
+        self.external_exec.execute('batch_%s' % batch_param, cmd,
                                    input_data=input_data)
 
     def batch_input_text_data(self, job_syntax_items):

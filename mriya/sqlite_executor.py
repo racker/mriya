@@ -4,7 +4,6 @@ __author__ = "Yaroslav Litvinov"
 __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
-import re
 import logging
 from StringIO import StringIO
 from logging import getLogger
@@ -67,22 +66,6 @@ class SqliteExecutor(SqlExecutor):
                 self.query += ';'
         return self.query
 
-    @staticmethod
-    def get_sub_str_between(query, start_str, end_str):
-        query = query.lower()
-        start = query.find(start_str) + len(start_str)
-        end = query.find(end_str)
-        return query[start:end]
-
-    @staticmethod
-    def get_query_columns(query):
-        regex = r'\(.*?\)'
-        query = re.sub(regex, '_', query)
-        cols = SqliteExecutor.get_sub_str_between(query,
-                                                  'select', 'from')
-        res = [x.strip().split(' ')[-1] for x in cols.split(',')]
-        return [x.split('.')[-1] for x in res]
-
     def _create_script(self, variables):
         imports = ''
         if CSVLIST_KEY in self.job_syntax_item :
@@ -101,7 +84,7 @@ class SqliteExecutor(SqlExecutor):
         elif BATCH_BEGIN_KEY in self.job_syntax_item:
             output += ".headers on\n"
             output += ".output stdout\n"
-        getLogger(__name__).info('EXECUTE: %s', self.get_query())
+        getLogger(__name__).info('EXECUTE [CSV]: %s', self.get_query())
         input_data = SQLITE_SCRIPT_FMT.format(imports=imports,
                                               output=output,
                                               query=self.get_query())
@@ -112,7 +95,7 @@ class SqliteExecutor(SqlExecutor):
         if size == 0:
             getLogger(__name__).info("Fix empty csv for table %s",
                                      table_name)
-            cols = SqliteExecutor.get_query_columns(self.get_query())
+            cols = SqlExecutor.get_query_columns(self.get_query())
             header = ','.join(cols)+'\n'
             with open(self.csv_name(table_name), 'w') as f:
                 f.write(header)

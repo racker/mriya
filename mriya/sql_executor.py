@@ -5,6 +5,7 @@ __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
 import os
+import re
 from logging import getLogger
 from mriya.job_syntax import JobSyntax, CSV_KEY, QUERY_KEY
 from mriya.job_syntax import DST_KEY, SRC_KEY
@@ -49,3 +50,19 @@ class SqlExecutor(object):
             value = value[1:-1]
         self.variables[key] = value
         getLogger(__name__).info("set var: %s=%s", key, value)
+
+    @staticmethod
+    def get_sub_str_between(query, start_str, end_str):
+        query = query.lower()
+        start = query.find(start_str) + len(start_str)
+        end = query.find(end_str)
+        return query[start:end]
+
+    @staticmethod
+    def get_query_columns(query):
+        regex = r'\(.*?\)'
+        query = re.sub(regex, '_', query)
+        cols = SqlExecutor.get_sub_str_between(query,
+                                                  'select', 'from')
+        res = [x.strip().split(' ')[-1] for x in cols.split(',')]
+        return [x.split('.')[-1] for x in res]

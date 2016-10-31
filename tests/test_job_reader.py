@@ -13,7 +13,7 @@ from configparser import ConfigParser
 from mriya.job_syntax import JobSyntax, LINE_KEY
 from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_syntax import BATCH_PARAMS_KEY
-from mriya.sqlite_executor import SqliteExecutor
+from mriya.sql_executor import SqlExecutor
 from mriya.job_controller import JobController
 from mriya.bulk_data import get_bulk_data_from_csv_stream
 from mriya.log import loginit
@@ -44,7 +44,7 @@ def assert_job_syntax_lines(res_syntax_items, expected):
 def test_columns():
     query = "SELECT foo, (SELECT 1 WHERE 0=1) as foo2, foo as foo3, \
 a.foo4 FROM "
-    res = SqliteExecutor.get_query_columns(query)
+    res = SqlExecutor.get_query_columns(query)
     try:
         assert(res == ['foo', 'foo2', 'foo3', 'foo4'])
     except:
@@ -55,7 +55,7 @@ a.foo4 FROM "
 b.bomba, (SELECT a.Id FROM foo a WHERE a.nope = b.Id) as id__c, \
 (SELECT a.Id from foo2 a WHERE a.ggg = b.nnn) as super \
 FROM sometable b WHERE ..."
-    res = SqliteExecutor.get_query_columns(query)
+    res = SqlExecutor.get_query_columns(query)
     try:
         assert(res == ['id2', 'bomba', 'id__c', 'super'])
     except:

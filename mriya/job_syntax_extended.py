@@ -20,6 +20,11 @@ class JobSyntaxExtended(JobSyntax):
         loginit(__name__)
         self.values = JobSyntaxExtended.integrate_macros_into_job_items(
             self.values, macroses)
+
+        # support nested macros inside another macros
+        self.values = JobSyntaxExtended.integrate_macros_into_job_items(
+            self.values, macroses)
+        
         self.values_extended = JobSyntaxExtended.parse_recursive(
             self.values)
 

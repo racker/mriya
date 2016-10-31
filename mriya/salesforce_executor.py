@@ -7,9 +7,11 @@ __email__ = "yaroslav.litvinov@rackspace.com"
 from logging import getLogger
 from mriya.sql_executor import SqlExecutor
 from mriya.job_syntax import QUERY_KEY, OBJNAME_KEY, CSV_KEY, VAR_KEY
-from mriya.job_syntax import CONST_KEY, DST_KEY, SRC_KEY
+from mriya.job_syntax import CONST_KEY, DST_KEY, SRC_KEY, FROM_KEY
 from mriya.bulk_data import parse_batch_res_data
 from mriya.log import loginit
+
+EMPTY_SF_RESPONSE = 'Records not found for this query'
 
 class SalesforceExecutor(SqlExecutor):
     def __init__(self, conn, job_syntax_item, variables):
@@ -34,13 +36,29 @@ class SalesforceExecutor(SqlExecutor):
 
     def execute(self):
         objname = self.job_syntax_item[OBJNAME_KEY]
-        getLogger(__name__).info("Execute: %s", self.get_query())
+        instname = ''
+        if FROM_KEY in self.job_syntax_item:
+            instname = self.job_syntax_item[FROM_KEY]
+        elif DST_KEY in self.job_syntax_item:
+            instname = self.job_syntax_item[DST_KEY]
+        elif SRC_KEY in self.job_syntax_item:
+            instname = self.job_syntax_item[SRC_KEY]
+        getLogger(__name__).info("Execute [%s.%s]: %s",
+                                 instname, objname,
+                                 self.get_query())
         bulk_res = self.conn.bulk_load(objname, self.get_query())
         self.handle_result(bulk_res)
         retcode = 0
         return retcode
 
     def handle_result(self, bulk_res):
+        # handle empty result - fix it by adding column names
+        if bulk_res and bulk_res[0] == EMPTY_SF_RESPONSE:
+            cols = SqlExecutor.get_query_columns(self.get_query())
+            header = ','.join(cols)
+            bulk_res = [header]
+
+        # handle result
         if CSV_KEY in self.job_syntax_item:
             csvfname = SqlExecutor.csv_name(self.job_syntax_item[CSV_KEY])
             with open(csvfname, 'w') as csv_f:

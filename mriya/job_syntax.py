@@ -178,7 +178,7 @@ class JobSyntax(object):
             key = key_vals[0]
             val = key_vals[1]
         except:
-            getLogger(__name__).error('Error: %s', pair)
+            getLogger(__name__).error('Error parsing transmitter value: %s', pair)
             raise
         if key == CSV_KEY or key == VAR_KEY:
             values[key] = val
