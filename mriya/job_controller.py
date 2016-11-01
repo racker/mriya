@@ -208,7 +208,9 @@ class JobController(object):
 
         if endpoint:
             opname = job_syntax_item[OP_KEY]
-            if opname == OP_UPSERT or opname == OP_INSERT or \
+            if opname == OP_UPSERT or \
+               opname == OP_INSERT or \
+               opname == OP_DELETE or \
                opname == OP_UPDATE:
                 csv_data = None
                 csv_filename = SqlExecutor.csv_name(job_syntax_item[CSV_KEY])
@@ -220,6 +222,8 @@ class JobController(object):
                                          opname, len(csv_data))
                 if opname == OP_UPDATE and len(csv_data):
                     conn.bulk_update(objname, csv_data)
+                if opname == OP_DELETE and len(csv_data):
+                    conn.bulk_delete(objname, csv_data)
                 elif opname == OP_INSERT and len(csv_data):
                     res = conn.bulk_insert(objname, csv_data)
                     result_ids = parse_batch_res_data(res)

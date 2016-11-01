@@ -78,6 +78,10 @@ class SfBulkConnector(BaseBulkConnector):
         self.handle_op_returning_ids('upsert', res)
         return res[1]
 
+    def bulk_delete(self, objname, csv_data):
+        res = self.bulk_common_('delete', objname, csv_data)
+        self.handle_op_returning_ids('delete', res)
+        return res[1]
 
     def bulk_update(self, objname, csv_data):
         res = self.bulk_common_('update', objname, csv_data)

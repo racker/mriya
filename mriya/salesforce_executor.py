@@ -4,6 +4,7 @@ __author__ = "Yaroslav Litvinov"
 __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
+import time
 from logging import getLogger
 from mriya.sql_executor import SqlExecutor
 from mriya.job_syntax import QUERY_KEY, OBJNAME_KEY, CSV_KEY, VAR_KEY
@@ -43,11 +44,14 @@ class SalesforceExecutor(SqlExecutor):
             instname = self.job_syntax_item[DST_KEY]
         elif SRC_KEY in self.job_syntax_item:
             instname = self.job_syntax_item[SRC_KEY]
+        t_before = time.time()
         getLogger(__name__).info("Execute [%s.%s]: %s",
                                  instname, objname,
                                  self.get_query())
         bulk_res = self.conn.bulk_load(objname, self.get_query())
         self.handle_result(bulk_res)
+        t_after = time.time()
+        getLogger(__name__).info('SF Took time: %.2f' % (t_after-t_before))
         retcode = 0
         return retcode
 

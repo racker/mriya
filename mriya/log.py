@@ -10,8 +10,11 @@ import sys
 LOGGING_LEVEL = logging.INFO
 
 def loginit(name):
+    stream = sys.stdout
+    if name == 'mriya.sqlite_executor':
+        pass
     logging.basicConfig(level=LOGGING_LEVEL,
-                        stream=sys.stdout,
+                        stream=stream,
                         format='%(asctime)s %(levelname)-8s %(message)s')
     logging.getLogger(name).setLevel(LOGGING_LEVEL)
     if LOGGING_LEVEL == logging.DEBUG:

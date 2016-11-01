@@ -4,6 +4,7 @@ __author__ = "Yaroslav Litvinov"
 __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
+import time
 import logging
 from StringIO import StringIO
 from logging import getLogger
@@ -46,7 +47,7 @@ class SqliteExecutor(SqlExecutor):
             # get csvlist after variables substitution
             values = JobSyntax.parse_query_params(self.get_query(), {})
             if CSVLIST_KEY in values:
-                getLogger(__name__).info('Fix csvlist: %s',
+                getLogger(__name__).debug('Fix csvlist: %s',
                                          values[CSVLIST_KEY])
                 if CSVLIST_KEY in self.job_syntax_item:
                     tmp = self.job_syntax_item[CSVLIST_KEY]
@@ -78,13 +79,14 @@ class SqliteExecutor(SqlExecutor):
             output += ".headers on\n"
             output += ".output {csv}\n"\
                 .format(csv=self.csv_name(table_name))
+            getLogger(__name__).info('working on table=%s', table_name)
         elif VAR_KEY in self.job_syntax_item:
             output += ".headers off\n"
             output += ".output stdout\n"
         elif BATCH_BEGIN_KEY in self.job_syntax_item:
             output += ".headers on\n"
             output += ".output stdout\n"
-        getLogger(__name__).info('EXECUTE [CSV]: %s', self.get_query())
+        getLogger(__name__).debug('EXECUTE [CSV]: %s', self.get_query())
         input_data = SQLITE_SCRIPT_FMT.format(imports=imports,
                                               output=output,
                                               query=self.get_query())
@@ -93,7 +95,7 @@ class SqliteExecutor(SqlExecutor):
     def fix_empty_res_table(self, table_name):
         size = SqlExecutor.csv_size(table_name)
         if size == 0:
-            getLogger(__name__).info("Fix empty csv for table %s",
+            getLogger(__name__).debug("Fix empty csv for table %s",
                                      table_name)
             cols = SqlExecutor.get_query_columns(self.get_query())
             header = ','.join(cols)+'\n'
@@ -101,6 +103,7 @@ class SqliteExecutor(SqlExecutor):
                 f.write(header)
 
     def execute(self):
+        t_before = time.time()
         executor = Executor()
         cmd = 'sqlite3 -batch'
         script = self._create_script(self.variables)
@@ -110,6 +113,8 @@ class SqliteExecutor(SqlExecutor):
                          output_pipe=True)
         res = executor.poll_for_complete(observer)
         del executor
+        t_after = time.time()
+        getLogger(__name__).info('Csv Took time: %.2f' % (t_after-t_before))
         if CSV_KEY in self.job_syntax_item:
             self.fix_empty_res_table(self.job_syntax_item[CSV_KEY])
         res = res['refname']
