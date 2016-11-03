@@ -203,6 +203,48 @@ class JobController(object):
                 res += item[LINE_KEY] + '\n'
         return res
 
+    def handle_transmitter_op(self, job_syntax_item, endpoint):
+        opname = job_syntax_item[OP_KEY]
+        csv_data = None
+        csv_filename = SqlExecutor.csv_name(job_syntax_item[CSV_KEY])
+        with open(csv_filename) as csv_f:
+            i = 0
+            csv_data = csv_f.readlines()
+        num_lines = len(csv_data)
+        # do nothing for empty data set
+        if num_lines <= 1:
+            getLogger(__name__).info('skip empty csv')
+            stub = ['"Id","Success","Created","Error"\n']
+            result_ids = parse_batch_res_data(stub)
+        else:
+            objname = job_syntax_item[endpoint]
+            conn = self.endpoints.endpoint(endpoint)
+            max_batch_size = job_syntax_item[BATCH_SIZE_KEY]
+            getLogger(__name__).info('EXECUTE: op:%s, Csv data size=%d',
+                                     opname, len(csv_data))
+            if opname == OP_UPDATE and len(csv_data):
+                res = conn.bulk_update(objname, csv_data,
+                                       max_batch_size)
+                result_ids = parse_batch_res_data(res)
+            if opname == OP_DELETE and len(csv_data):
+                res = conn.bulk_delete(objname, csv_data,
+                                       max_batch_size)
+                result_ids = parse_batch_res_data(res)
+            elif opname == OP_INSERT and len(csv_data):
+                res = conn.bulk_insert(objname, csv_data,
+                                       max_batch_size)
+                result_ids = parse_batch_res_data(res)
+        if NEW_IDS_TABLE in job_syntax_item:
+            results_file_name = \
+                 SqlExecutor.csv_name(job_syntax_item[NEW_IDS_TABLE])
+            with open(results_file_name, 'w') as result_ids_file:
+                csv_data = csv_from_bulk_data(result_ids)
+                result_ids_file.write(csv_data)
+            getLogger(__name__).info('Saved result ids: %s',
+                                     results_file_name)
+        getLogger(__name__).info('Done: %s operation', opname)
+
+
     def post_operation(self, job_syntax_item):
         endpoint = None
         if DST_KEY in job_syntax_item:
@@ -216,39 +258,7 @@ class JobController(object):
                opname == OP_INSERT or \
                opname == OP_DELETE or \
                opname == OP_UPDATE:
-                csv_data = None
-                csv_filename = SqlExecutor.csv_name(job_syntax_item[CSV_KEY])
-                with open(csv_filename) as csv_f:
-                    i = 0
-                    csv_data = csv_f.read()
-                    csv_f.seek(0)
-                    for i,_ in enumerate(csv_f):
-                        pass
-                num_lines = i + 1
-                # do nothing for empty data set
-                if num_lines <= 1:
-                    getLogger(__name__).info('skip empty csv')
-                    return
-                objname = job_syntax_item[endpoint]
-                conn = self.endpoints.endpoint(endpoint)
-                getLogger(__name__).info('EXECUTE: op:%s, Csv data size=%d',
-                                         opname, len(csv_data))
-                if opname == OP_UPDATE and len(csv_data):
-                    res = conn.bulk_update(objname, csv_data)
-                if opname == OP_DELETE and len(csv_data):
-                    res = conn.bulk_delete(objname, csv_data)
-                elif opname == OP_INSERT and len(csv_data):
-                    res = conn.bulk_insert(objname, csv_data)
-                    result_ids = parse_batch_res_data(res)
-                if NEW_IDS_TABLE in job_syntax_item:
-                    results_file_name = \
-                        SqlExecutor.csv_name(job_syntax_item[NEW_IDS_TABLE])
-                    with open(results_file_name, 'w') as result_ids_file:
-                        csv_data = csv_from_bulk_data(result_ids)
-                        result_ids_file.write(csv_data)
-                    getLogger(__name__).info('Saved result ids: %s',
-                                             results_file_name)
-                getLogger(__name__).info('Done: %s operation', opname)
+                self.handle_transmitter_op(job_syntax_item, endpoint)
             else:
                 getLogger(__name__).error('Unsupported operation: %s',
                                           opname)

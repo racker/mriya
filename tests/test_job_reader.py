@@ -17,6 +17,7 @@ from mriya.sql_executor import SqlExecutor
 from mriya.job_controller import JobController
 from mriya.bulk_data import get_bulk_data_from_csv_stream
 from mriya.log import loginit
+from mriya.sf_bulk_connector import SfBulkConnector
 
 config_filename = 'test-config.ini'
 endpoint_names = {'dst': 'test', 'src': 'test'}
@@ -78,22 +79,22 @@ def test_job_syntax():
              'SELECT 1 => csv:const1',
              'SELECT 1 => var:MIN',
              'SELECT f1, (SELECT f2 FROM csv.one_ten) as f10 FROM \
-csv.one_ten, 9; => csv:final => dst:insert:foo',
+csv.one_ten, 9; => csv:final => dst:insert:foo:1:res',
              'SELECT 1 as bacth1 from csv.some_csv; \
 => batch_begin:batch1:BATCH',
              'SELECT 1 from dst.some_object WHERE b=a \
 => csv:some_csv => batch_end:BATCH',
              '=> batch_end:BATCH',
              'SELECT 1 as test, 2 as test2; => csv:foo:cache \
-=> dst:insert:test_table:new_ids',
+=> dst:insert:test_table:1:new_ids',
              'SELECT 1 as test, 2 as test2; => csv:foo \
-=> dst:insert:test_table']
+=> dst:insert:test_table:1:res']
     expected = [
         {'query': 'SELECT 1', 'csv': 'const1'},
         {'query': 'SELECT 1', 'var': 'MIN'},
         {'query': 'SELECT f1, (SELECT f2 FROM one_ten) as f10 FROM one_ten, 9;',
          'csv': 'final', 'from': 'csv', 'dst' : 'foo', 'op' : 'insert',
-         'csvlist': ['one_ten']},
+         'csvlist': ['one_ten'], 'batch_size': '1', 'new_ids_table': 'res'},
         {'query': 'SELECT 1 as bacth1 from some_csv;',
          'batch_begin': ('batch1', 'BATCH'), 'from': 'csv',
          'csvlist': ['some_csv']},
@@ -103,9 +104,11 @@ csv.one_ten, 9; => csv:final => dst:insert:foo',
         {'query': '', 'batch_end': 'BATCH'},
         {'query': 'SELECT 1 as test, 2 as test2;',
          'op': 'insert', 'dst' : 'test_table', 'csv': 'foo',
-         'cache': '', 'new_ids_table': 'new_ids'},
+         'cache': '', 'new_ids_table': 'new_ids',
+         'batch_size': '1'},
         {'query': 'SELECT 1 as test, 2 as test2;', 'csv': 'foo',
-         'op': 'insert', 'dst' : 'test_table'}
+         'op': 'insert', 'dst' : 'test_table',
+         'batch_size': '1', 'new_ids_table': 'res'}
     ]
 
     job_syntax = JobSyntax(lines)
@@ -202,11 +205,11 @@ def test_job_controller():
 => csv:some_data:cache",
              "SELECT Id from csv.some_data LIMIT 1; => var:id_test",
              "SELECT Account_Birthday__c,Name FROM csv.some_data; \
-=> csv:some_data_staging => dst:insert:Account:newids",
+=> csv:some_data_staging => dst:insert:Account:1:newids",
              "UPDATE csv.some_data SET Account_Birthday__c=null, Name='%d'; \
              SELECT Id,Account_Birthday__c,Name FROM csv.some_data \
 WHERE Id = '{id_test}' \
-             => csv:some_data_staging => dst:update:Account" % notch]
+             => csv:some_data_staging => dst:update:Account:1:res_ids" % notch]
     job_syntax = JobSyntaxExtended(lines)
     with open(config_filename) as conf_file:
         job_controller = JobController(conf_file.name, endpoint_names,
@@ -226,8 +229,14 @@ WHERE Id = '{id_test}' \
             assert len(row[id_idx]) >= 15
 
 
+def test_batch_splitter():
+    batch_ranges = SfBulkConnector.batch_ranges(10, 3)
+    print batch_ranges
+    assert(batch_ranges == [(0,2), (3,5), (6,8), (9,9)])
+
 if __name__ == '__main__':
     loginit(__name__)
+    test_batch_splitter()
     test_columns()
     test_read()
     test_job_syntax()

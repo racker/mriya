@@ -32,6 +32,7 @@ OBJNAME_KEY = 'objname'
 NEW_IDS_TABLE = 'new_ids_table'
 CACHE_KEY = 'cache'
 REPLACE_KEY = 'replace'
+BATCH_SIZE_KEY = 'batch_size'
 
 # only sqlite related
 CSVLIST_KEY = 'csvlist'
@@ -193,9 +194,14 @@ class JobSyntax(object):
             values[OP_KEY] = val
             values[key] = objname_val
             if (val == OP_INSERT or val == OP_UPSERT or \
-                val == OP_DELETE or val == OP_UPDATE) \
-                and len(key_vals) > 3:
-                values[NEW_IDS_TABLE] = key_vals[3]
+                val == OP_DELETE or val == OP_UPDATE):
+                if len(key_vals) >= 5:
+                    values[BATCH_SIZE_KEY] = key_vals[3]
+                    values[NEW_IDS_TABLE] = key_vals[4]
+                else:
+                    getLogger(__name__).info("%d,%s", len(key_vals), pair)
+                    getLogger(__name__).error("Batch parameters required")
+                    assert(0)
         elif key == BATCH_BEGIN_KEY:
             val2 = key_vals[2]
             values[key] = (val, val2)

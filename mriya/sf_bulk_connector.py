@@ -34,61 +34,102 @@ class SfBulkConnector(BaseBulkConnector):
                                           info['stateMessage'])
 
     def handle_op_returning_ids(self, opname, res):
-        batch = res[0]
-        batch_res = res[1]
-        result_ids = parse_batch_res_data(batch_res)
+        result_ids = parse_batch_res_data(res)
         id_idx = result_ids.fields.index('Id')
         success_idx = result_ids.fields.index('Success')
         error_idx = result_ids.fields.index('Error')
         for item in result_ids.rows:
             if item[success_idx] != 'true':
-                getLogger(__name__).error('Batch %s %s: Id=%s, error:%s',
-                                          batch, opname, item[id_idx],
+                getLogger(__name__).error('Batch %s: Id=%s, error:%s',
+                                          opname, item[id_idx],
                                           item[error_idx])
+        return result_ids
 
-    def bulk_common_(self, op, objname, soql_or_csv, upsert_external_field=None):
+    @staticmethod
+    def batch_ranges(lines_count, batch_size):
+        batches = []
+        batch_end = -1
+        left = lines_count
+        while left:
+            size = min(left,batch_size)
+            batch_begin = batch_end+1
+            batch_end = batch_begin + size -1
+            left = left - size
+            batches.append((batch_begin,batch_end))
+        return batches
+
+    def bulk_common_(self, op, objname, soql_or_csv, max_batch_size,
+                     upsert_external_field=None):
+        batch_res = []
         try:
             # create job
             self.bulk.job_create(op, objname, upsert_external_field)
-        
-            # create batch
-            batch_id = self.bulk.batch_create(soql_or_csv)
+            
+            batch_ids = []
+            if type(soql_or_csv) is list:
+                if len(soql_or_csv):
+                    header = soql_or_csv[0]
+                    lines_count = len(soql_or_csv) - 1
+                    batch_idx = 0
+                    batch_ranges = SfBulkConnector.batch_ranges(lines_count,
+                                                                max_batch_size)
+                    for batch_range in batch_ranges:
+                        batch_data = [header]
+                        batch_data.extend(
+                            soql_or_csv[batch_range[0]+1:
+                                        batch_range[1]+2])
+                        # create batch
+                        batch_id = self.bulk.batch_create(''.join(batch_data))
+                        batch_ids.append(batch_id)
+            else:
+                batch_id = self.bulk.batch_create(soql_or_csv)
+                batch_ids.append(batch_id)
         
             # wait until job is completed
             while (not self.bulk.job_is_completed()):
                 sleep(5)
 
-            self.handle_batch_error(batch_id)
-            batch_res = self.bulk.batch_result()[batch_id]
+            for batch_id in batch_ids:
+                self.handle_batch_error(batch_id)
+                one_res = self.bulk.batch_result()[batch_id]
+                if not batch_res:
+                    batch_res.extend(one_res)
+                elif len(one_res):
+                    batch_res.extend(one_res[1:])
+
             self.bulk.job_close()
-            return (batch_id, batch_res)
+            return batch_res
         except:
-            if self.bulk.jobinfo.id:
+            if self.bulk.jobinfo and self.bulk.jobinfo.id:
                 self.bulk.job_close()
             raise
 
-    def bulk_insert(self, objname, csv_data):
-        res = self.bulk_common_('insert', objname, csv_data)
+    def bulk_insert(self, objname, csv_data, max_batch_size):
+        res = self.bulk_common_('insert', objname, csv_data,
+                                max_batch_size)
         self.handle_op_returning_ids('insert', res)
-        return res[1]
+        return res
 
-    def bulk_upsert(self, objname, csv_data, upsert_external_field):
+    def bulk_upsert(self, objname, csv_data, max_batch_size,
+                    upsert_external_field):
         res = self.bulk_common_('upsert', objname, csv_data,
                                 upsert_external_field)
         self.handle_op_returning_ids('upsert', res)
-        return res[1]
+        return res
 
-    def bulk_delete(self, objname, csv_data):
-        res = self.bulk_common_('delete', objname, csv_data)
+    def bulk_delete(self, objname, csv_data, max_batch_size):
+        res = self.bulk_common_('delete', objname, csv_data,
+                                max_batch_size)
         self.handle_op_returning_ids('delete', res)
-        return res[1]
+        return  res
 
-    def bulk_update(self, objname, csv_data):
-        res = self.bulk_common_('update', objname, csv_data)
+    def bulk_update(self, objname, csv_data, max_batch_size):
+        res = self.bulk_common_('update', objname, csv_data,
+                                max_batch_size)
         self.handle_op_returning_ids('update', res)
-        return res[1]
+        return res
 
     def bulk_load(self, objname, soql):
-        res = self.bulk_common_('query', objname, soql)
-        return res[1]
+        res = self.bulk_common_('query', objname, soql, None)
+        return res
 
