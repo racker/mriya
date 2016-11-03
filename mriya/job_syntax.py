@@ -192,7 +192,9 @@ class JobSyntax(object):
             objname_val = key_vals[2]
             values[OP_KEY] = val
             values[key] = objname_val
-            if val == OP_INSERT and len(key_vals) > 3:
+            if (val == OP_INSERT or val == OP_UPSERT or \
+                val == OP_DELETE or val == OP_UPDATE) \
+                and len(key_vals) > 3:
                 values[NEW_IDS_TABLE] = key_vals[3]
         elif key == BATCH_BEGIN_KEY:
             val2 = key_vals[2]

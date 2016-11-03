@@ -95,7 +95,11 @@ class JobController(object):
                         query, csv_name)
                     return
             sql_exec = self.create_executor(job_syntax_item)
-            sql_exec.execute()
+            try:
+                sql_exec.execute()
+            except:
+                print job_syntax_item
+                raise
             sql_exec.saved_csv()
             self.post_operation(job_syntax_item)
             self.variables = sql_exec.variables
@@ -215,26 +219,35 @@ class JobController(object):
                 csv_data = None
                 csv_filename = SqlExecutor.csv_name(job_syntax_item[CSV_KEY])
                 with open(csv_filename) as csv_f:
+                    i = 0
                     csv_data = csv_f.read()
+                    csv_f.seek(0)
+                    for i,_ in enumerate(csv_f):
+                        pass
+                num_lines = i + 1
+                # do nothing for empty data set
+                if num_lines <= 1:
+                    getLogger(__name__).info('skip empty csv')
+                    return
                 objname = job_syntax_item[endpoint]
                 conn = self.endpoints.endpoint(endpoint)
                 getLogger(__name__).info('EXECUTE: op:%s, Csv data size=%d',
                                          opname, len(csv_data))
                 if opname == OP_UPDATE and len(csv_data):
-                    conn.bulk_update(objname, csv_data)
+                    res = conn.bulk_update(objname, csv_data)
                 if opname == OP_DELETE and len(csv_data):
-                    conn.bulk_delete(objname, csv_data)
+                    res = conn.bulk_delete(objname, csv_data)
                 elif opname == OP_INSERT and len(csv_data):
                     res = conn.bulk_insert(objname, csv_data)
                     result_ids = parse_batch_res_data(res)
-                    if NEW_IDS_TABLE in job_syntax_item:
-                        results_file_name = \
-                            SqlExecutor.csv_name(job_syntax_item[NEW_IDS_TABLE])
-                        with open(results_file_name, 'w') as result_ids_file:
-                            csv_data = csv_from_bulk_data(result_ids)
-                            result_ids_file.write(csv_data)
-                        getLogger(__name__).info('Saved result ids: %s',
-                                                 results_file_name)
+                if NEW_IDS_TABLE in job_syntax_item:
+                    results_file_name = \
+                        SqlExecutor.csv_name(job_syntax_item[NEW_IDS_TABLE])
+                    with open(results_file_name, 'w') as result_ids_file:
+                        csv_data = csv_from_bulk_data(result_ids)
+                        result_ids_file.write(csv_data)
+                    getLogger(__name__).info('Saved result ids: %s',
+                                             results_file_name)
                 getLogger(__name__).info('Done: %s operation', opname)
             else:
                 getLogger(__name__).error('Unsupported operation: %s',
