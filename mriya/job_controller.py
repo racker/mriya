@@ -219,7 +219,7 @@ class JobController(object):
         else:
             objname = job_syntax_item[endpoint]
             conn = self.endpoints.endpoint(endpoint)
-            max_batch_size = job_syntax_item[BATCH_SIZE_KEY]
+            max_batch_size = int(job_syntax_item[BATCH_SIZE_KEY])
             getLogger(__name__).info('EXECUTE: op:%s, Csv data size=%d',
                                      opname, len(csv_data))
             if opname == OP_UPDATE and len(csv_data):

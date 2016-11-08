@@ -9,7 +9,7 @@ from logging import getLogger
 from mriya.sql_executor import SqlExecutor
 from mriya.job_syntax import QUERY_KEY, OBJNAME_KEY, CSV_KEY, VAR_KEY
 from mriya.job_syntax import CONST_KEY, DST_KEY, SRC_KEY, FROM_KEY
-from mriya.bulk_data import parse_batch_res_data
+from mriya import bulk_data
 from mriya.log import loginit
 
 EMPTY_SF_RESPONSE = 'Records not found for this query'
@@ -69,12 +69,21 @@ class SalesforceExecutor(SqlExecutor):
                 if not len(bulk_res[-1]):
                     #ignore last empty results
                     bulk_res = bulk_res[:-1]
+                #join incomplete lines and then write complete line
+                line = ''
                 for csv_line in bulk_res:
-                    csv_f.write(csv_line)
-                    csv_f.write('\n')
+                    # just add newline, as salesforce anyway replaces 
+                    # cr by newline when update
+                    line += csv_line + '\n'
+                    if not line.count('"') % 2:
+                        csv_f.write(
+                            bulk_data.prepare_received_sf_data(line))
+                        line = ''
+                    else:
+                        continue
                 csv_f.flush()
         elif VAR_KEY in self.job_syntax_item:
-            res = parse_batch_res_data(bulk_res)
+            res = bulk_data.parse_batch_res_data(bulk_res)
             if res.rows:
                 self.save_var(self.job_syntax_item[VAR_KEY],
                               res.rows[0][0])

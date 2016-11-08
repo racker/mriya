@@ -16,6 +16,7 @@ from mriya.job_syntax import BATCH_PARAMS_KEY
 from mriya.sql_executor import SqlExecutor
 from mriya.job_controller import JobController
 from mriya.bulk_data import get_bulk_data_from_csv_stream
+from mriya.bulk_data import prepare_received_sf_data
 from mriya.log import loginit
 from mriya.sf_bulk_connector import SfBulkConnector
 
@@ -115,6 +116,7 @@ csv.one_ten, 9; => csv:final => dst:insert:foo:1:res',
     assert_job_syntax_lines(job_syntax.items(), expected)
 
 def test_var_csv():
+    print "test_var_csv"
     macro_lines = ['SELECT i from csv.ints10000 WHERE i>=CAST(10 as INTEGER) \
 LIMIT 2; => batch_begin:i:NESTED',
                    'SELECT {NESTED}; => var:foo2',
@@ -199,17 +201,28 @@ one_ten) as f10 FROM one_ten;',
         assert resulted_file.read() == 'f1,f9,f10\n1,9,10\n'
 
 def test_job_controller():
+    print "test_job_controller"
+
+    test_csv = ['"Alexa__c"', '"hello\n2"']
+    with open("test_csv.csv", "w") as test_csv_f:
+        test_csv_f.write(test_csv[0] + '\n')
+        for item in test_csv[1:]:
+            test_csv_f.write(prepare_received_sf_data(item) + '\n')
+
     notch = randint(0, 1000000)
     print "notch", notch
-    lines = ["SELECT Id,Account_Birthday__c,Name FROM src.Account LIMIT 2; \
+    lines = ["SELECT Id,Account_Birthday__c,Name,Alexa__c FROM src.Account LIMIT 1; \
 => csv:some_data:cache",
              "SELECT Id from csv.some_data LIMIT 1; => var:id_test",
-             "SELECT Account_Birthday__c,Name FROM csv.some_data; \
+             "SELECT Account_Birthday__c,Name,Alexa__c FROM csv.some_data; \
 => csv:some_data_staging => dst:insert:Account:1:newids",
              "UPDATE csv.some_data SET Account_Birthday__c=null, Name='%d'; \
-             SELECT Id,Account_Birthday__c,Name FROM csv.some_data \
+             SELECT Id,Account_Birthday__c,Name,Alexa__c FROM csv.some_data \
 WHERE Id = '{id_test}' \
-             => csv:some_data_staging => dst:update:Account:1:res_ids" % notch]
+             => csv:some_data_staging => dst:update:Account:1:res_ids" % notch,
+             "SELECT '{id_test}' as Id,Alexa__c FROM csv.test_csv => csv:some_data_staging2 => \
+              dst:update:Account:1:res_ids",
+             "SELECT Alexa__c FROM dst.Account WHERE Id = '{id_test}' => csv:test_csv_2"]
     job_syntax = JobSyntaxExtended(lines)
     with open(config_filename) as conf_file:
         job_controller = JobController(conf_file.name, endpoint_names,
@@ -228,6 +241,7 @@ WHERE Id = '{id_test}' \
         for row in csv_data.rows:
             assert len(row[id_idx]) >= 15
 
+    assert open("test_csv.csv").read() == open("test_csv_2.csv").read()
 
 def test_batch_splitter():
     batch_ranges = SfBulkConnector.batch_ranges(10, 3)

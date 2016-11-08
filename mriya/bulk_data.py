@@ -32,6 +32,15 @@ def csv_from_list_of_dicts(list_of_dicts_data):
     csv_writer.close()
     return txt
 
+def get_stream_from_csv_rows_list(csv_rows_list):
+    istream = StringIO()
+    # put data into stream for handling
+    for csv_row in csv_rows_list:
+        istream.write(csv_row)
+        istream.write('\n')
+    istream.seek(0)
+    return istream
+
 def csv_from_bulk_data(bulk_data):
     output = StringIO()
     csv_writer = CsvWriter(output, False)
@@ -47,16 +56,6 @@ def csv_from_bulk_data(bulk_data):
     output.close()
     csv_writer.close()
     return txt
-
-
-def get_stream_from_csv_rows_list(csv_rows_list):
-    istream = StringIO()
-    # put data into stream for handling
-    for csv_row in csv_rows_list:
-        istream.write(csv_row)
-        istream.write('\n')
-    istream.seek(0)
-    return istream
 
 def get_bulk_data_from_csv_stream(istream):
     csv_reader = CsvReader(istream)
@@ -81,3 +80,17 @@ def get_bulk_data_from_csv_stream(istream):
 def parse_batch_res_data(csv_rows_list):
     istream = get_stream_from_csv_rows_list(csv_rows_list)
     return get_bulk_data_from_csv_stream(istream)
+
+def prepare_received_sf_data(received_data):
+    import re
+    reg_templ = r"\"[^]]*\""
+    received_data2 = re.sub(reg_templ, 
+           lambda x:x.group(0).replace('\r\n','<RN CR>').replace('\n','<N CR>'),
+           received_data)
+    #print "before", received_data, "after", received_data2
+    return received_data2
+
+def prepare_sf_data_to_send(data_to_send):
+    # use space in repl for doublequotes to be added by sqlite
+    repls = ('<RN CR>', '\r\n'), ('<N CR>', '\n')
+    return reduce(lambda a, kv: a.replace(*kv), repls, data_to_send)
