@@ -62,26 +62,14 @@ class SalesforceExecutor(SqlExecutor):
             header = ','.join(cols)
             bulk_res = [header]
 
+        if len(bulk_res) > 1:
+            #ignore last empty results
+            bulk_res = bulk_res[:-1]
+
         # handle result
         if CSV_KEY in self.job_syntax_item:
             csvfname = SqlExecutor.csv_name(self.job_syntax_item[CSV_KEY])
-            with open(csvfname, 'w') as csv_f:
-                if not len(bulk_res[-1]):
-                    #ignore last empty results
-                    bulk_res = bulk_res[:-1]
-                #join incomplete lines and then write complete line
-                line = ''
-                for csv_line in bulk_res:
-                    # just add newline, as salesforce anyway replaces 
-                    # cr by newline when update
-                    line += csv_line + '\n'
-                    if not line.count('"') % 2:
-                        csv_f.write(
-                            bulk_data.prepare_received_sf_data(line))
-                        line = ''
-                    else:
-                        continue
-                csv_f.flush()
+            bulk_data.save_escape_csv_lines_as_csv_file(csvfname, bulk_res)
         elif VAR_KEY in self.job_syntax_item:
             res = bulk_data.parse_batch_res_data(bulk_res)
             if res.rows:

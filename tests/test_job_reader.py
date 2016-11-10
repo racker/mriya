@@ -10,6 +10,7 @@ from pprint import PrettyPrinter
 from StringIO import StringIO
 from random import randint
 from configparser import ConfigParser
+from mriya import bulk_data
 from mriya.job_syntax import JobSyntax, LINE_KEY
 from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_syntax import BATCH_PARAMS_KEY
@@ -203,11 +204,9 @@ one_ten) as f10 FROM one_ten;',
 def test_job_controller():
     print "test_job_controller"
 
-    test_csv = ['"Alexa__c"', '"hello\n2"']
+    test_csv = ['"Alexa__c"', '"hello\n\n2"']
     with open("test_csv.csv", "w") as test_csv_f:
-        test_csv_f.write(test_csv[0] + '\n')
-        for item in test_csv[1:]:
-            test_csv_f.write(prepare_received_sf_data(item) + '\n')
+        test_csv_f.write('"Alexa__c"\n"hello<N CR><N CR>2"\n')
 
     notch = randint(0, 1000000)
     print "notch", notch
@@ -237,7 +236,11 @@ WHERE Id = '{id_test}' \
     with open('newids.csv') as newids_file:
         csv_data = get_bulk_data_from_csv_stream(newids_file)
         id_idx = csv_data.fields.index('Id')
-        assert 2 == len(csv_data.rows)
+        try:
+            assert 1 == len(csv_data.rows)
+        except:
+            print "len(csv_data.rows)", len(csv_data.rows)
+            raise
         for row in csv_data.rows:
             assert len(row[id_idx]) >= 15
 
