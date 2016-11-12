@@ -5,16 +5,16 @@ __email__ = "yaroslav.litvinov@rackspace.com"
 
 from mriya import bulk_data
 from sfbulk import Bulk
-from logging import getLogger, DEBUG
+from logging import getLogger
 from time import sleep
 from mriya.base_connector import BaseBulkConnector
-from mriya.log import loginit
+from mriya.log import loginit, STDERR, STDOUT, LOG
 
 class SfBulkConnector(BaseBulkConnector):
 
     def __init__(self, conn_param):
         super(SfBulkConnector, self).__init__(conn_param)
-        loginit(__name__)
+        #loginit(__name__)
         # initialize bulk
         self.bulk = Bulk(self.instance_url)
         self.bulk.login(username=self.conn_param.username,
@@ -29,19 +29,23 @@ class SfBulkConnector(BaseBulkConnector):
         if batch_id in self.bulk.jobinfo.batch:
             info = self.bulk.jobinfo.batch[batch_id]
             if info['state'] != 'Completed':
-                getLogger(__name__).error('%s bachFailed %s',
-                                          batch_id,
-                                          info['stateMessage'])
+                try:
+                    errmes = info['stateMessage']
+                except:
+                    errmes = 'SF Error occured, failed to get description'
+                getLogger(STDERR).error('%s bachFailed %s',
+                                        batch_id, errmes)
 
-    def handle_op_returning_ids(self, opname, res):
+    def handle_op_returning_ids(self, opname, objname, res):
         result_ids = bulk_data.parse_batch_res_data(res)
         id_idx = result_ids.fields.index('Id')
         success_idx = result_ids.fields.index('Success')
         error_idx = result_ids.fields.index('Error')
         for item in result_ids.rows:
             if item[success_idx] != 'true':
-                getLogger(__name__).error('Batch %s: Id=%s, error:%s',
-                                          opname, item[id_idx],
+                getLogger(STDERR).error('Batch %s-%s: Id=%s, error:%s',
+                                          opname, objname,
+                                          item[id_idx],
                                           item[error_idx])
         return result_ids
 
@@ -88,7 +92,7 @@ class SfBulkConnector(BaseBulkConnector):
                 batch_id = self.bulk.batch_create(soql_or_csv)
                 batch_ids.append(batch_id)
         
-            getLogger(__name__).info("Lines: %d, max_batch_size: %s batches %s",
+            getLogger(LOG).info("Lines: %d, max_batch_size: %s batches %s",
                                      lines_count, str(max_batch_size), batch_ids)
             # wait until job is completed
             while (not self.bulk.job_is_completed()):
@@ -117,26 +121,26 @@ class SfBulkConnector(BaseBulkConnector):
     def bulk_insert(self, objname, csv_data, max_batch_size):
         res = self.bulk_common_('insert', objname, csv_data,
                                 max_batch_size)
-        self.handle_op_returning_ids('insert', res)
+        self.handle_op_returning_ids('insert', objname, res)
         return res
 
     def bulk_upsert(self, objname, csv_data, max_batch_size,
                     upsert_external_field):
         res = self.bulk_common_('upsert', objname, csv_data,
                                 upsert_external_field)
-        self.handle_op_returning_ids('upsert', res)
+        self.handle_op_returning_ids('upsert', objname, res)
         return res
 
     def bulk_delete(self, objname, csv_data, max_batch_size):
         res = self.bulk_common_('delete', objname, csv_data,
                                 max_batch_size)
-        self.handle_op_returning_ids('delete', res)
+        self.handle_op_returning_ids('delete', objname, res)
         return  res
 
     def bulk_update(self, objname, csv_data, max_batch_size):
         res = self.bulk_common_('update', objname, csv_data,
                                 max_batch_size)
-        self.handle_op_returning_ids('update', res)
+        self.handle_op_returning_ids('update', objname, res)
         return res
 
     def bulk_load(self, objname, soql):

@@ -11,7 +11,7 @@ from sys import stdin
 from logging import getLogger
 from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_controller import JobController
-from mriya.log import loginit
+from mriya.log import loginit, STDOUT, STDERR, LOG
 
 def run_job_from_file(config_file, job_file, endpoints, variables,
                       debug_steps):
@@ -64,7 +64,10 @@ if __name__ == '__main__':
     import sys  
     reload(sys)  
     sys.setdefaultencoding('utf8')
-    loginit(__name__)
+    loginit(STDOUT)
+    loginit(STDERR)
+    loginit(LOG)
+    getLogger(STDOUT).info('Starting')
     parser = argparse.ArgumentParser()
     parser = add_args(parser)
     args = parser.parse_args()
@@ -77,7 +80,7 @@ if __name__ == '__main__':
                  'dst': args.dst_name}
     input_file = None
     if args.job_stdin:
-        getLogger(__name__).info('Run batch as stdin input')
+        getLogger(STDOUT).info('Run batch as stdin input')
         input_file = sys.stdin
     else:
         input_file = args.job_file

@@ -17,7 +17,7 @@ class JobSyntaxExtended(JobSyntax):
     def __init__(self, main, macroses={}):
         super(JobSyntaxExtended, self).__init__(main)
         # now self.values has parsed items
-        loginit(__name__)
+        #loginit(__name__)
 
         all_loaded = JobSyntaxExtended.foo(
             main, macroses)

@@ -10,7 +10,7 @@ from mriya.sql_executor import SqlExecutor
 from mriya.job_syntax import QUERY_KEY, OBJNAME_KEY, CSV_KEY, VAR_KEY
 from mriya.job_syntax import CONST_KEY, DST_KEY, SRC_KEY, FROM_KEY
 from mriya import bulk_data
-from mriya.log import loginit
+from mriya.log import loginit, STDOUT
 
 EMPTY_SF_RESPONSE = 'Records not found for this query'
 
@@ -18,7 +18,7 @@ class SalesforceExecutor(SqlExecutor):
     def __init__(self, conn, job_syntax_item, variables):
         super(SalesforceExecutor, self).__init__(job_syntax_item, variables)
         self.conn = conn
-        loginit(__name__)
+        #loginit(__name__)
         self.query = None
     
     def get_query(self):
@@ -45,13 +45,13 @@ class SalesforceExecutor(SqlExecutor):
         elif SRC_KEY in self.job_syntax_item:
             instname = self.job_syntax_item[SRC_KEY]
         t_before = time.time()
-        getLogger(__name__).info("Execute [%s.%s]: %s",
+        getLogger(STDOUT).info("Execute [%s.%s]: %s",
                                  instname, objname,
                                  self.get_query())
         bulk_res = self.conn.bulk_load(objname, self.get_query())
         self.handle_result(bulk_res)
         t_after = time.time()
-        getLogger(__name__).info('SF Took time: %.2f' % (t_after-t_before))
+        getLogger(STDOUT).info('SF Took time: %.2f' % (t_after-t_before))
         retcode = 0
         return retcode
 

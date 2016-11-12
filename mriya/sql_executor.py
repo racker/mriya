@@ -8,12 +8,12 @@ import os
 import re
 from logging import getLogger
 from mriya.job_syntax import JobSyntax, CSV_KEY, QUERY_KEY
-from mriya.job_syntax import DST_KEY, SRC_KEY
-from mriya.log import loginit
+from mriya.job_syntax import DST_KEY, SRC_KEY, PUBLISH_KEY
+from mriya.log import loginit, LOG, STDOUT
 
 class SqlExecutor(object):
     def __init__(self, job_syntax_item, variables):
-        loginit(__name__)
+        #loginit(__name__)
         self.job_syntax_item = job_syntax_item
         self.variables = variables
 
@@ -34,9 +34,10 @@ class SqlExecutor(object):
     def saved_csv(self):
         if CSV_KEY in self.job_syntax_item:
             name = self.job_syntax_item[CSV_KEY]
-            getLogger(__name__).info('Saved csv: %s, size: %d',
-                                     self.csv_name(name),
-                                     self.csv_size(name))
+            getLogger(LOG).info('Saved csv: %s, size: %d',
+                                   self.csv_name(name),
+                                   self.csv_size(name))
+            getLogger(STDOUT).info('.')
 
     @staticmethod
     def prepare_query_put_vars(query, variables):
@@ -49,7 +50,9 @@ class SqlExecutor(object):
         if len(value) and value[0] == '"' and value[-1] == '"':
             value = value[1:-1]
         self.variables[key] = value
-        getLogger(__name__).info("set var: %s=%s", key, value)
+        getLogger(LOG).info("set var: %s=%s", key, value)
+        if PUBLISH_KEY in self.job_syntax_item:
+            getLogger(STDOUT).info("%s=%s", key, value)
 
     @staticmethod
     def get_sub_str_between(query, start_str, end_str):

@@ -29,8 +29,9 @@ from sfbulk.utils_csv import loadFromCSVFile
 from sfbulk.utils_xml import parseXMLResult
 
 
-logging.basicConfig()
-LOGGER = logging.getLogger(u'sfbulk')
+#logging.basicConfig(filename='mriya.log')
+#LOGGER = logging.getLogger(u'sfbulk')
+LOGGER = logging.getLogger(__name__)
 
 
 class Bulk(sf):
@@ -292,9 +293,13 @@ class Bulk(sf):
                     self.logger.info("Batch: %s status is: %s" %
                                     (batch, status))
                 else:
+                    try:
+                        stat = jobinfo.batch[batch]['stateMessage']
+                    except:
+                        stat = 'Exception occured here'
                     self.logger.info("Batch: %s status is: %s: %s" %
                                      (batch, status,
-                                     jobinfo.batch[batch]['stateMessage']
+                                     stat
                                      ))
 
         return completed

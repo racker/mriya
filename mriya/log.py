@@ -8,15 +8,26 @@ import logging
 import sys
 
 LOGGING_LEVEL = logging.INFO
+STDOUT = 'stdout' #reserved name
+STDERR = 'error.log' #reserved name
+LOG = 'mriya.log'  #reserved name
 
 def loginit(name):
-    stream = sys.stdout
-    if name == 'mriya.sqlite_executor':
-        pass
-    logging.basicConfig(level=LOGGING_LEVEL,
-                        stream=stream,
-                        format='%(asctime)s %(levelname)-8s %(message)s')
-    logging.getLogger(name).setLevel(LOGGING_LEVEL)
+    if name == STDERR:
+        file_handler = logging.FileHandler(STDERR, 'w')
+        log_format = '%(asctime)s %(levelname)-8s %(message)s'
+    elif name == LOG:
+        file_handler = logging.FileHandler(LOG, 'w')
+        log_format = '%(asctime)s %(levelname)-8s %(message)s'
+    elif name == STDOUT:
+        file_handler = logging.StreamHandler(sys.stdout)
+        log_format = '%(message)s'
+    if not file_handler:
+        return
+    file_handler.setFormatter(logging.Formatter(log_format))
+    logger = logging.getLogger(name)
+    logger.setLevel(LOGGING_LEVEL)
+    logger.addHandler(file_handler)
     if LOGGING_LEVEL == logging.DEBUG:
         # These two lines enable debugging at httplib level
         # (requests->urllib3->http.client) You will see the REQUEST,

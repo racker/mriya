@@ -17,6 +17,7 @@ QUERY_KEY = 'query'
 LINE_KEY = 'line'
 MACRO_KEY = 'macro'
 CONST_KEY = 'const'
+PUBLISH_KEY = 'publish'
 
 BATCH_PARAMS_KEY = 'batch_params'
 BATCH_BEGIN_KEY = 'batch_begin'
@@ -39,12 +40,12 @@ CSVLIST_KEY = 'csvlist'
 
 from logging import getLogger
 from itertools import izip
-from mriya.log import loginit
+from mriya.log import loginit, STDOUT, LOG
 
 class JobSyntax(object):
 
     def __init__(self, raw_lines):
-        loginit(__name__)
+        #loginit(__name__)
         raw_lines = JobSyntax.prepare_lines(raw_lines)
         self.values = self.parse_lines(raw_lines)
 
@@ -179,14 +180,20 @@ class JobSyntax(object):
             key = key_vals[0]
             val = key_vals[1]
         except:
-            getLogger(__name__).error('Error parsing transmitter value: %s', pair)
+            getLogger(STDOUT).error('Error parsing transmitter value: %s', pair)
             raise
-        if key == CSV_KEY or key == VAR_KEY:
+        if key == CSV_KEY:
             values[key] = val
             if len(key_vals) > 2:
                 cache_flag = key_vals[2]
                 if cache_flag == CACHE_KEY:
                     values[CACHE_KEY] = ''
+        elif key == VAR_KEY:
+            values[key] = val
+            if len(key_vals) > 2:
+                flag = key_vals[2]
+                if flag == PUBLISH_KEY:
+                    values[PUBLISH_KEY] = ''
         elif key == CONST_KEY:
             values[key] = val
         elif key == DST_KEY or key == SRC_KEY:
@@ -199,8 +206,8 @@ class JobSyntax(object):
                     values[BATCH_SIZE_KEY] = key_vals[3]
                     values[NEW_IDS_TABLE] = key_vals[4]
                 else:
-                    getLogger(__name__).info("%d,%s", len(key_vals), pair)
-                    getLogger(__name__).error("Batch parameters required")
+                    getLogger(LOG).info("%d,%s", len(key_vals), pair)
+                    getLogger(STDOUT).error("Batch parameters required")
                     assert(0)
         elif key == BATCH_BEGIN_KEY:
             val2 = key_vals[2]

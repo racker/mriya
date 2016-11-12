@@ -5,10 +5,11 @@ __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
 import os
+import time
 import os.path
 from logging import getLogger
 from configparser import ConfigParser
-from mriya.log import loginit
+from mriya.log import loginit, LOG, STDOUT
 from mriya.job_syntax import *
 from mriya.opexecutor import Executor
 from mriya.sql_executor import SqlExecutor
@@ -44,7 +45,7 @@ class JobController(object):
 
     def __init__(self, config_filename, endpoint_names,
                  job_syntax, variables, debug_steps):
-        loginit(__name__)
+        #loginit(__name__)
         self.config_file = open(config_filename)
         self.config = ConfigParser()
         self.config.read_file(self.config_file)
@@ -67,7 +68,7 @@ class JobController(object):
     def create_executor(self, job_syntax_item):
         sql_exec = None
         sqltype = JobSyntax.sqltype(job_syntax_item)
-        getLogger(__name__).debug(job_syntax_item)
+        getLogger(LOG).debug(job_syntax_item)
         if sqltype == SQL_TYPE_SQLITE:
             sql_exec = SqliteExecutor(job_syntax_item, self.variables)
         elif sqltype == SQL_TYPE_SF:
@@ -90,7 +91,7 @@ class JobController(object):
                 csv_name = SqlExecutor.csv_name(job_syntax_item[CSV_KEY])
                 csv_size = SqlExecutor.csv_size(job_syntax_item[CSV_KEY])
                 if csv_size:
-                    getLogger(__name__).info(
+                    getLogger(LOG).info(
                         "SKIP query: '%s', csvfile exist: %s",
                         query, csv_name)
                     return
@@ -140,18 +141,21 @@ class JobController(object):
         batch_param_name = job_syntax_item[BATCH_BEGIN_KEY][1]
         batch_syntax_items = job_syntax_item[BATCH_KEY]
         batch_params = self.variables[BATCH_PARAMS_KEY]
-        getLogger(__name__).info("batch params list %s",
+        getLogger(LOG).info("batch params list %s",
                                  batch_params )
         # loop through batch parameters list
         if not batch_params:
-            getLogger(__name__).info("Skip empty batch %s",
-                                     batch_param_name)
+            getLogger(STDOUT).info("Skip empty batch %s",
+                                batch_param_name)
             return
         for param in batch_params:
             self.variables[batch_param_name] = param
-            getLogger(__name__).info("------ batch %s/%s",
-                                     param, batch_params)
-            getLogger(__name__)\
+            getLogger(LOG).info("------ batch %s/%s",
+                                param, batch_params)
+            if PUBLISH_KEY in job_syntax_item:
+                getLogger(STDOUT).info(
+                    "%s=%s", batch_param_name, param )
+            getLogger(LOG)\
                 .info("set batch var: %s=%s",
                       batch_param_name, param )
             # prepare variables for external batch
@@ -192,7 +196,7 @@ class JobController(object):
                              dst=self.endpoints.endpoint_names['dst'],
                              variables=text_vars)
         input_data = self.batch_input_text_data(job_syntax_items)
-        getLogger(__name__).info('Invoke cmd:%s', cmd)
+        getLogger(LOG).info('Invoke cmd:%s', cmd)
         self.external_exec.execute('batch_%s' % batch_param, cmd,
                                    input_data=input_data)
 
@@ -213,15 +217,16 @@ class JobController(object):
         num_lines = len(csv_data)
         # do nothing for empty data set
         if num_lines <= 1:
-            getLogger(__name__).info('skip empty csv')
+            getLogger(LOG).info('skip empty csv')
             stub = ['"Id","Success","Created","Error"\n']
             result_ids = parse_batch_res_data(stub)
         else:
             objname = job_syntax_item[endpoint]
             conn = self.endpoints.endpoint(endpoint)
             max_batch_size = int(job_syntax_item[BATCH_SIZE_KEY])
-            getLogger(__name__).info('EXECUTE: op:%s, Csv data size=%d',
-                                     opname, len(csv_data))
+            getLogger(STDOUT).info('EXECUTE: %s %s, Csv data size=%d',
+                                     opname, objname, len(csv_data))
+            t_before = time.time()
             if opname == OP_UPDATE and len(csv_data):
                 res = conn.bulk_update(objname, csv_data,
                                        max_batch_size)
@@ -234,15 +239,18 @@ class JobController(object):
                 res = conn.bulk_insert(objname, csv_data,
                                        max_batch_size)
                 result_ids = parse_batch_res_data(res)
+            t_after = time.time()
+            getLogger(STDOUT).info('SF %s Took time: %.2f' \
+                                   % (opname, t_after-t_before))
         if NEW_IDS_TABLE in job_syntax_item:
             results_file_name = \
                  SqlExecutor.csv_name(job_syntax_item[NEW_IDS_TABLE])
             with open(results_file_name, 'w') as result_ids_file:
                 csv_data = csv_from_bulk_data(result_ids)
                 result_ids_file.write(csv_data)
-            getLogger(__name__).info('Saved result ids: %s',
+            getLogger(LOG).info('Saved result ids: %s',
                                      results_file_name)
-        getLogger(__name__).info('Done: %s operation', opname)
+        getLogger(LOG).info('Done: %s operation', opname)
 
 
     def post_operation(self, job_syntax_item):
@@ -260,8 +268,8 @@ class JobController(object):
                opname == OP_UPDATE:
                 self.handle_transmitter_op(job_syntax_item, endpoint)
             else:
-                getLogger(__name__).error('Unsupported operation: %s',
-                                          opname)
+                getLogger(STDOUT).error('Unsupported operation: %s',
+                                        opname)
                 assert(0)
 
 
