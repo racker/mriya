@@ -209,6 +209,16 @@ class JobController(object):
 
     def handle_transmitter_op(self, job_syntax_item, endpoint):
         opname = job_syntax_item[OP_KEY]
+        # run batches sequentially / parallel
+        if BATCH_TYPE_KEY in job_syntax_item:
+            if job_syntax_item[BATCH_TYPE_KEY] == BATCH_TYPE_PARALLEL_KEY:
+                batch_seq = False
+            elif job_syntax_item[BATCH_TYPE_KEY] == BATCH_TYPE_SEQUENTIAL_KEY:
+                batch_seq = True
+            else:
+                raise Exception('Unknown batch type: %s', job_syntax_item[BATCH_TYPE_KEY])
+        else:
+            batch_seq = False # parallel by default
         csv_data = None
         csv_filename = SqlExecutor.csv_name(job_syntax_item[CSV_KEY])
         with open(csv_filename) as csv_f:
@@ -229,15 +239,15 @@ class JobController(object):
             t_before = time.time()
             if opname == OP_UPDATE and len(csv_data):
                 res = conn.bulk_update(objname, csv_data,
-                                       max_batch_size)
+                                       max_batch_size, batch_seq)
                 result_ids = parse_batch_res_data(res)
             if opname == OP_DELETE and len(csv_data):
                 res = conn.bulk_delete(objname, csv_data,
-                                       max_batch_size)
+                                       max_batch_size, batch_seq)
                 result_ids = parse_batch_res_data(res)
             elif opname == OP_INSERT and len(csv_data):
                 res = conn.bulk_insert(objname, csv_data,
-                                       max_batch_size)
+                                       max_batch_size, batch_seq)
                 result_ids = parse_batch_res_data(res)
             t_after = time.time()
             getLogger(STDOUT).info('SF %s Took time: %.2f' \

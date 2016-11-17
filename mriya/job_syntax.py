@@ -29,6 +29,9 @@ OP_INSERT = 'insert'
 OP_UPSERT = 'upsert'
 OP_UPDATE = 'update'
 OP_DELETE = 'delete'
+BATCH_TYPE_KEY = 'type'
+BATCH_TYPE_PARALLEL_KEY = 'parallel' #by default
+BATCH_TYPE_SEQUENTIAL_KEY = 'sequential'
 OBJNAME_KEY = 'objname'
 NEW_IDS_TABLE = 'new_ids_table'
 CACHE_KEY = 'cache'
@@ -198,6 +201,8 @@ class JobSyntax(object):
                 if flag == PUBLISH_KEY:
                     values[PUBLISH_KEY] = ''
         elif key == CONST_KEY:
+            values[key] = val
+        elif key == BATCH_TYPE_KEY:
             values[key] = val
         elif key == DST_KEY or key == SRC_KEY:
             objname_val = key_vals[2]

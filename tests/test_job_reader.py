@@ -18,7 +18,7 @@ from mriya.sql_executor import SqlExecutor
 from mriya.job_controller import JobController
 from mriya.bulk_data import get_bulk_data_from_csv_stream
 from mriya.bulk_data import prepare_received_sf_data
-from mriya.log import loginit
+from mriya.log import loginit, STDOUT, STDERR, LOG
 from mriya.sf_bulk_connector import SfBulkConnector
 
 config_filename = 'test-config.ini'
@@ -93,7 +93,7 @@ csv.one_ten, 9; => csv:final => dst:insert:foo:1:res',
 => dst:insert:test_table:1:res']
     expected = [
         {'query': 'SELECT 1', 'csv': 'const1'},
-        {'query': 'SELECT 1', 'var': 'MIN'},
+        {'from': 'csv', 'query': 'SELECT 1', 'var': 'MIN'},
         {'query': 'SELECT f1, (SELECT f2 FROM one_ten) as f10 FROM one_ten, 9;',
          'csv': 'final', 'from': 'csv', 'dst' : 'foo', 'op' : 'insert',
          'csvlist': ['one_ten'], 'batch_size': '1', 'new_ids_table': 'res'},
@@ -139,17 +139,19 @@ FROM csv.one_ten; => csv:one_nine_ten',
              '=> batch_end:PARAM',
              'SELECT {PARAM}; => var:final_test']
 
-    expected = [{'query': 'SELECT 1;', 'var': 'one'},
-                {'query': "SELECT 'csv.ints10000';",
+    expected = [{'from': 'csv', 'query': 'SELECT 1;', 'var': 'one'},
+                {'from': 'csv',
+                 'query': "SELECT 'csv.ints10000';",
                  'var': 'CSV_INTS10000',
                  'csvlist': ['ints10000'],
                  'const': '',
                  'from': 'csv'},
-                {'query': "SELECT * FROM {CSV_INTS10000} LIMIT 1;",
+                {'from': 'csv',
+                 'query': "SELECT * FROM {CSV_INTS10000} LIMIT 1;",
                  'var': 'VAR_0'},
-                {'query': 'SELECT "9+0";', 'var': 'nine'},
-                {'query': 'SELECT Id FROM Account LIMIT 1', 
-                 'var': 'sfvar', 'from': 'src', 'objname': 'Account'},
+                {'from': 'csv', 'query': 'SELECT "9+0";', 'var': 'nine'},
+                {'objname': 'Account','query': 'SELECT Id FROM Account LIMIT 1', 
+                 'var': 'sfvar', 'from': 'csv', 'objname': 'Account'},
                 {'query': 'SELECT {one} as f1, {nine}+1 as f2;',
                  'csv': 'one_ten'},
                 {'query': 'SELECT f1, {nine} as f9, (SELECT f2 FROM \
@@ -252,7 +254,9 @@ def test_batch_splitter():
     assert(batch_ranges == [(0,2), (3,5), (6,8), (9,9)])
 
 if __name__ == '__main__':
-    loginit(__name__)
+    loginit(STDOUT)
+    loginit(STDERR)
+    loginit(LOG)
     test_batch_splitter()
     test_columns()
     test_read()
