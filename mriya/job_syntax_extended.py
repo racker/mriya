@@ -8,7 +8,7 @@ from logging import getLogger
 from mriya.job_syntax import BATCH_BEGIN_KEY, BATCH_END_KEY
 from mriya.job_syntax import JobSyntax, QUERY_KEY
 from mriya.job_syntax import MACRO_KEY, REPLACE_KEY
-from mriya.log import loginit
+from mriya.log import loginit, LOG
 
 BATCH_KEY = 'batch'
 
@@ -37,7 +37,6 @@ class JobSyntaxExtended(JobSyntax):
         
         self.values_extended = JobSyntaxExtended.parse_recursive(
             self.values)
-
 
     @staticmethod
     def foo(lines, macroses):

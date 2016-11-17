@@ -169,6 +169,9 @@ class JobSyntax(object):
             query = query.replace(SRC_KEY+'.', '')
         values[LINE_KEY] = line
         values[QUERY_KEY] = query
+        # var only supported by csv
+        if VAR_KEY in values:
+            values[FROM_KEY] = CSV_KEY
         return values
     
     @staticmethod

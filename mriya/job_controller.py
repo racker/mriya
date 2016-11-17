@@ -87,6 +87,7 @@ class JobController(object):
             is_cache = CACHE_KEY in job_syntax_item
             if not query:
                 return
+            getLogger(LOG).info(job_syntax_item)
             if not is_var and is_csv and is_cache:
                 csv_name = SqlExecutor.csv_name(job_syntax_item[CSV_KEY])
                 csv_size = SqlExecutor.csv_size(job_syntax_item[CSV_KEY])
@@ -150,7 +151,7 @@ class JobController(object):
             return
         for param in batch_params:
             self.variables[batch_param_name] = param
-            getLogger(LOG).info("------ batch %s/%s",
+            getLogger(STDOUT).info("------ batch %s/%s",
                                 param, batch_params)
             if PUBLISH_KEY in job_syntax_item:
                 getLogger(STDOUT).info(
@@ -160,7 +161,6 @@ class JobController(object):
                       batch_param_name, param )
             # prepare variables for external batch
             external_vars = {}
-            print self.variables
             for key, val in self.variables.iteritems():
                 if type(val) is not list:
                     external_vars[key] = val
@@ -224,7 +224,7 @@ class JobController(object):
             objname = job_syntax_item[endpoint]
             conn = self.endpoints.endpoint(endpoint)
             max_batch_size = int(job_syntax_item[BATCH_SIZE_KEY])
-            getLogger(STDOUT).info('EXECUTE: %s %s, Csv data size=%d',
+            getLogger(STDOUT).info('EXECUTE: %s %s, lines count=%d',
                                      opname, objname, len(csv_data))
             t_before = time.time()
             if opname == OP_UPDATE and len(csv_data):

@@ -71,6 +71,9 @@ class SqliteExecutor(SqlExecutor):
         imports = ''
         if CSVLIST_KEY in self.job_syntax_item :
             for table_name in self.job_syntax_item[CSVLIST_KEY] :
+                #check if table name contain vars
+                table_name = SqlExecutor.prepare_query_put_vars(
+                    table_name, self.variables)
                 imports += ".import {csv} {name}\n"\
                     .format(csv=self.csv_name(table_name), name=table_name)
         output = ''
@@ -86,7 +89,7 @@ class SqliteExecutor(SqlExecutor):
         elif BATCH_BEGIN_KEY in self.job_syntax_item:
             output += ".headers on\n"
             output += ".output stdout\n"
-        getLogger(LOG).debug('EXECUTE [CSV]: %s', self.get_query())
+        getLogger(LOG).info('EXECUTE [CSV]: %s', self.get_query())
         input_data = SQLITE_SCRIPT_FMT.format(imports=imports,
                                               output=output,
                                               query=self.get_query())
