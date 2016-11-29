@@ -8,8 +8,9 @@ import collections
 from subprocess import Popen, PIPE
 
 class Executor:
-    def __init__(self):
+    def __init__(self, silent_exit = False):
         self.subprocesses = []
+        self.silent_exit = silent_exit
 
     def __del__(self):
         self.wait_for_complete()
@@ -18,7 +19,7 @@ class Executor:
         retcode = proc.popen.poll()
         if retcode is None:
             return None
-        if retcode != 0:
+        if retcode != 0 and not self.silent_exit:
             raise Exception('Opexecutor',
                             'Exit code=%d,  %s' % (retcode, str(proc.cmd)))
         return retcode

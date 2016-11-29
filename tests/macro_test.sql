@@ -1,0 +1,1 @@
+{QUERY} => csv:{RES_TABLE_NAME}

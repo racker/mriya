@@ -7,7 +7,6 @@ __email__ = "yaroslav.litvinov@rackspace.com"
 import argparse
 import glob
 import os.path
-from sys import stdin
 from logging import getLogger
 from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_controller import JobController
@@ -47,7 +46,6 @@ def add_args(parser):
     parser.add_argument("--job-file", action="store",
                         help="Job file with sql instructions",
                         type=file)
-    parser.add_argument('--job-stdin', action='store_true', required=False)
     parser.add_argument('--step-by-step', action='store_true', required=False)
     parser.add_argument('--var', nargs='*', action='append')
     parser.add_argument("--src-name",
@@ -71,19 +69,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser = add_args(parser)
     args = parser.parse_args()
-    if not args.job_file and not args.job_stdin:
-        print "Arguments error: Job data not specified"
+    if not args.job_file:
+        print "Arguments error: Job file not specified"
         parser.print_help()
+        exit(1)
 
     variables = vars_from_args(args.var)
     endpoints = {'src': args.src_name,
                  'dst': args.dst_name}
-    input_file = None
-    if args.job_stdin:
-        getLogger(STDOUT).info('Run batch as stdin input')
-        input_file = sys.stdin
-    else:
-        input_file = args.job_file
+    input_file = args.job_file
     print variables
     run_job_from_file(args.conf_file, input_file, endpoints, variables,
                       args.step_by_step)
