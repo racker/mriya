@@ -45,6 +45,7 @@ def assert_job_syntax_lines(res_syntax_items, expected):
 
 
 def test_columns():
+    loginit(__name__)
     query = "SELECT foo, (SELECT 1 WHERE 0=1) as foo2, foo as foo3, \
 a.foo4 FROM "
     res = SqlExecutor.get_query_columns(query)
@@ -67,6 +68,7 @@ FROM sometable b WHERE ..."
 
 
 def test_read():
+    loginit(__name__)
     text = 'SELECT \\\n\
 1 => csv:const1\n\
 SELECT 1 => var:MIN => dst:foo'
@@ -77,6 +79,7 @@ SELECT 1 => var:MIN => dst:foo'
 
 
 def test_job_syntax():
+    loginit(__name__)
     lines = ['--something', #will not be added to parsed values
              'SELECT 1 => csv:const1',
              'SELECT 1 => var:MIN',
@@ -117,6 +120,7 @@ csv.one_ten, 9; => csv:final => dst:insert:foo:1:res',
     assert_job_syntax_lines(job_syntax.items(), expected)
 
 def test_var_csv():
+    loginit(__name__)
     print "test_var_csv"
     macro_lines = ['SELECT i from csv.ints10000 WHERE i>=CAST(10 as INTEGER) \
 LIMIT 2; => batch_begin:i:NESTED',
@@ -128,7 +132,8 @@ LIMIT 2; => batch_begin:i:NESTED',
              "SELECT 'csv.ints10000'; => var:CSV_INTS10000 => const:",
              "SELECT * FROM {CSV_INTS10000} LIMIT 1; => var:VAR_0",
              'SELECT "9+0"; => var:nine',
-             'SELECT Id FROM src.Account LIMIT 1 => var:sfvar',
+             'SELECT Id FROM src.Account LIMIT 1 => csv:sfvar',
+             'SELECT * FROM csv.sfvar => var:sfvar',
              'SELECT {one} as f1, {nine}+1 as f2; => csv:one_ten',
              'SELECT f1, {nine} as f9, (SELECT f2 FROM csv.one_ten) as f10 \
 FROM csv.one_ten; => csv:one_nine_ten',
@@ -150,8 +155,12 @@ FROM csv.one_ten; => csv:one_nine_ten',
                  'query': "SELECT * FROM {CSV_INTS10000} LIMIT 1;",
                  'var': 'VAR_0'},
                 {'from': 'csv', 'query': 'SELECT "9+0";', 'var': 'nine'},
+
                 {'objname': 'Account','query': 'SELECT Id FROM Account LIMIT 1', 
-                 'var': 'sfvar', 'from': 'csv', 'objname': 'Account'},
+                 'csv': 'sfvar', 'from': 'src', 'objname': 'Account'},
+                {'query': 'SELECT * FROM sfvar', 'var': 'sfvar',
+                 'csvlist': ['sfvar'], 'from': 'csv'},
+
                 {'query': 'SELECT {one} as f1, {nine}+1 as f2;',
                  'csv': 'one_ten'},
                 {'query': 'SELECT f1, {nine} as f9, (SELECT f2 FROM \
@@ -161,10 +170,12 @@ one_ten) as f10 FROM one_ten;',
                  'from': 'csv'},
                 {   'batch': [   {   'line': 'SELECT {PARAM}; => var:foo',
                                      'query': 'SELECT {PARAM};',
-                                     'var': 'foo'},
+                                     'var': 'foo',
+                                     'from': 'csv'},
                                  {   'batch': [   {   'line': 'SELECT {NESTED}; => var:foo2',
                                                       'query': 'SELECT {NESTED};',
-                                                      'var': 'foo2'}],
+                                                      'var': 'foo2',
+                                                      'from': 'csv'}],
                                      'batch_begin': ('i', 'NESTED'),
                                      'csvlist': ['ints10000'],
                                      'from': 'csv',
@@ -172,12 +183,13 @@ one_ten) as f10 FROM one_ten;',
                                      'query': 'SELECT i from ints10000 WHERE i>=CAST(10 as INTEGER) LIMIT 2;'},
                                  {   'line': "SELECT 'something'; => var:static_var",
                                      'query': "SELECT 'something';",
-                                     'var': 'static_var'}],
+                                     'var': 'static_var',
+                                     'from': 'csv'}],
                     'batch_begin': ('i', 'PARAM'),
                     'csvlist': ['ints10000'],
                     'from': 'csv',
                     'query': 'SELECT i from ints10000 WHERE i>=2 LIMIT 2;'},
-                {'query': 'SELECT {PARAM};', 'var': 'final_test'}
+                {'from': 'csv', 'query': 'SELECT {PARAM};', 'var': 'final_test'}
             ]
 
     job_syntax_extended = JobSyntaxExtended(
@@ -204,6 +216,7 @@ one_ten) as f10 FROM one_ten;',
         assert resulted_file.read() == 'f1,f9,f10\n1,9,10\n'
 
 def test_job_controller():
+    loginit(__name__)
     print "test_job_controller"
 
     test_csv = ['"Alexa__c"', '"hello\n\n2"']
@@ -249,14 +262,13 @@ WHERE Id = '{id_test}' \
     assert open("test_csv.csv").read() == open("test_csv_2.csv").read()
 
 def test_batch_splitter():
+    loginit(__name__)
     batch_ranges = SfBulkConnector.batch_ranges(10, 3)
     print batch_ranges
     assert(batch_ranges == [(0,2), (3,5), (6,8), (9,9)])
 
 if __name__ == '__main__':
-    loginit(STDOUT)
-    loginit(STDERR)
-    loginit(LOG)
+    loginit(__name__)
     test_batch_splitter()
     test_columns()
     test_read()

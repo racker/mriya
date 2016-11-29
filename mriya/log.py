@@ -12,22 +12,38 @@ STDOUT = 'stdout' #reserved name
 STDERR = 'error.log' #reserved name
 LOG = 'mriya.log'  #reserved name
 
-def loginit(name):
-    if name == STDERR:
-        file_handler = logging.FileHandler(STDERR, 'w')
+# to avoid add loggers having the same names
+INITIALIZED_LOGGERS = []
+
+def defaultlog():
+    loginit(STDOUT)
+    loginit(LOG, STDOUT)
+    loginit(STDERR, STDOUT)
+
+def loginit(name, log_to=None):
+    if name in INITIALIZED_LOGGERS:
+        return
+
+    if not log_to:
+        log_to = name
+    if log_to == STDERR or log_to == LOG:
+        file_handler = logging.FileHandler(name, 'w')
         log_format = '%(asctime)s %(levelname)-8s %(message)s'
-    elif name == LOG:
-        file_handler = logging.FileHandler(LOG, 'w')
-        log_format = '%(asctime)s %(levelname)-8s %(message)s'
-    elif name == STDOUT:
+    elif log_to == STDOUT:
         file_handler = logging.StreamHandler(sys.stdout)
         log_format = '%(message)s'
+    else:
+        loginit(name, log_to=STDOUT)
+        defaultlog()
+        return
+
     if not file_handler:
         return
     file_handler.setFormatter(logging.Formatter(log_format))
     logger = logging.getLogger(name)
     logger.setLevel(LOGGING_LEVEL)
     logger.addHandler(file_handler)
+    INITIALIZED_LOGGERS.append(name)
     if LOGGING_LEVEL == logging.DEBUG:
         # These two lines enable debugging at httplib level
         # (requests->urllib3->http.client) You will see the REQUEST,

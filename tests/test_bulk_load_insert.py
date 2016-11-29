@@ -93,7 +93,7 @@ def test_insert_load():
 
     ####### INSERT #####
     csv_data = TEST_CSV_INSERT
-    bulk_result_ids = conn.bulk_insert('Account', csv_data)
+    bulk_result_ids = conn.bulk_insert('Account', csv_data, 1000, False)
     # Retrieve ids of inserted results
     result_ids = parse_batch_res_data(bulk_result_ids)
 
@@ -120,13 +120,12 @@ def test_insert_update():
     conn_param = auth_token.conn_param_with_token()
     conn = SfBulkConnector(conn_param)
 
-    ####### UPSERT #####
+    ####### INSERT #####
     csv_data = TEST_CSV_UPSERT
-    bulk_result_ids = conn.bulk_upsert('Account', csv_data,
-                                       None)
-    # Retrieve ids of upserted results
+    bulk_result_ids = conn.bulk_insert('Account', csv_data, 1000, False)
+    # Retrieve ids of inserted results
     result_ids = parse_batch_res_data(bulk_result_ids)
-    print "ok upsert"
+    print "ok insert"
 
     ###### UPDATE #####
     selected_with_ids = fetch_records_by_returned_ids(
@@ -143,7 +142,7 @@ def test_insert_update():
 
     csv_update = csv_from_bulk_data(update_data)
     print "csv_update", csv_update
-    update_bulk_result_ids = conn.bulk_update('Account', csv_update)
+    update_bulk_result_ids = conn.bulk_update('Account', csv_update, 1000, False)
     # Retrieve ids of inserted results
     update_result_ids = parse_batch_res_data(update_bulk_result_ids)
     print "update_result_ids", update_result_ids
