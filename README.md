@@ -14,6 +14,7 @@ SELECT something from src.SalesforceTable => csv:Opportunity1
 SELECT Id,{fields} from dst.SalesforceTable => csv:Opportunity2
 SELECT Id, {fields} FROM csv.Opportunity2 => csv:Opportunity_something_update => dst:update:Opportunity:10000:Update_Result_Ids
 
+Also see tests for syntax examples.
 
 1. 
 export PYTHONPATH=pybulk/sfbulk/:.
@@ -32,3 +33,4 @@ host_prefix =
 2.2. Specify [test] section to run tests
 
 3. run test
+Tests require config file salesforce endpoint sections.

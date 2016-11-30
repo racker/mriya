@@ -10,7 +10,6 @@ import pprint
 from StringIO import StringIO
 from logging import getLogger
 from configparser import ConfigParser
-from mriya.data_connector import RESTConnector
 from mriya.data_connector import get_conn_param
 from mriya.data_connector import conn_param_set_token
 from mriya.data_connector import AuthToken
