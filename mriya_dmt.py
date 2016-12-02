@@ -78,6 +78,7 @@ if __name__ == '__main__':
     endpoints = {'src': args.src_name,
                  'dst': args.dst_name}
     input_file = args.job_file
-    print variables
+    if variables:
+        print "Recognize variables", variables
     run_job_from_file(args.conf_file, input_file, endpoints, variables,
                       args.step_by_step)
