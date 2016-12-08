@@ -2,9 +2,11 @@
 __author__ = 'Volodymyr Varchuk, Yaroslav Litvinov'
 
 from collections import namedtuple
+import os
 import requests
 from json import loads, load, dump
 from mriya.sf_bulk_connector import SfBulkConnector
+from mriya.config import *
 
 ConnectorParam = namedtuple('ConnectorParam',
                          ['username', 'password', 'url_prefix',
@@ -15,12 +17,12 @@ QUERY_LIMIT = 200
 session_file = 'sessions.ini'
 
 def get_conn_param(conf_dict):
-    param = ConnectorParam(conf_dict['username'].encode('utf-8'),
-                           conf_dict['password'].encode('utf-8'),
-                           conf_dict['host_prefix'].encode('utf-8'),
+    param = ConnectorParam(conf_dict[USERNAME_SETTING].encode('utf-8'),
+                           conf_dict[PASSWORD_SETTING].encode('utf-8'),
+                           conf_dict[HOST_PREFIX_SETTING].encode('utf-8'),
                            '',
-                           conf_dict['consumer_key'].encode('utf-8'),
-                           conf_dict['consumer_secret'].encode('utf-8'),
+                           conf_dict[CONSUMER_KEY_SETTING].encode('utf-8'),
+                           conf_dict[CONSUMER_SECRET_SETTING].encode('utf-8'),
                            '')
     return param
 
@@ -31,7 +33,7 @@ def conn_param_set_token(conn_param, access_token):
     return ConnectorParam._make(new_conn_param_list)
 
 def create_bulk_connector(config, setting_name):
-    sessions_file_name = config['DEFAULT']['sessions_file']
+    sessions_file_name = config[DEFAULT_SETTINGS_SECTION][SESSIONS_SETTING]
     conn_param = get_conn_param(config[setting_name])
     auth_token = AuthToken(conn_param, sessions_file_name)
     conn_param = auth_token.conn_param_with_token()

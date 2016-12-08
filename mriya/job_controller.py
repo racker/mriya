@@ -9,6 +9,7 @@ import time
 import os.path
 from logging import getLogger
 from configparser import ConfigParser
+from mriya import sql_executor
 from mriya.log import loginit, LOG, STDOUT
 from mriya.job_syntax import *
 from mriya.opexecutor import Executor
@@ -18,8 +19,9 @@ from mriya.salesforce_executor import SalesforceExecutor
 from mriya.data_connector import create_bulk_connector
 from mriya.bulk_data import csv_from_bulk_data, parse_batch_res_data
 from mriya.job_syntax_extended import JobSyntaxExtended, BATCH_KEY
+from mriya.config import *
 
-INTS_TABLE = SqlExecutor.csv_name('ints10000')
+INTS_TABLE = 'ints10000'
 
 class Endpoints(object):
     def __init__(self, config, endpoint_names):
@@ -54,12 +56,14 @@ class JobController(object):
         self.variables = variables
         self.debug_steps = debug_steps
         self.external_exec = Executor()
+        # update data path
+        sql_executor.DATADIRNAME = self.config[DEFAULT_SETTINGS_SECTION][DATADIR_SETTING]
         # create csv file for an internal batch purpose
-        with open(INTS_TABLE, 'w') as ints:
+        ints1000_csv = SqlExecutor.csv_name(INTS_TABLE)
+        with open(ints1000_csv, 'w') as ints:
             ints.write('i\n')
             for i in xrange(10001):
                 ints.write('%d\n' % i)
-
 
     def __del__(self):
         del self.endpoints

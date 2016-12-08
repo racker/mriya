@@ -20,6 +20,7 @@ Also see tests for syntax examples.
 export PYTHONPATH=pybulk/sfbulk/:.
 
 2. config file
+Use sample-config.ini as a base for your config files.
 2.1. Format
 --- config file sections / options:
 [src]
