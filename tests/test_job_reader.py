@@ -196,7 +196,7 @@ one_ten) as f10 FROM one_ten;',
         lines, {'macro_test_batch': macro_lines })
     assert_job_syntax_lines(job_syntax_extended.items(), expected)
     try:
-        os.remove('one_nine_ten.csv')
+        os.remove(SqlExecutor.csv_name('one_nine_ten'))
     except:
         pass
     with open(config_filename) as conf_file:
@@ -212,7 +212,7 @@ one_ten) as f10 FROM one_ten;',
     final_param = job_controller.variables['final_test']
     assert final_param == '3'
     del job_controller
-    with open('one_nine_ten.csv') as resulted_file:
+    with open(SqlExecutor.csv_name('one_nine_ten')) as resulted_file:
         assert resulted_file.read() == 'f1,f9,f10\n1,9,10\n'
 
 def test_job_controller():
@@ -220,7 +220,7 @@ def test_job_controller():
     print "test_job_controller"
 
     test_csv = ['"Alexa__c"', '"hello\n\n2"']
-    with open("test_csv.csv", "w") as test_csv_f:
+    with open(SqlExecutor.csv_name('test_csv'), "w") as test_csv_f:
         test_csv_f.write('"Alexa__c"\n"hello<N CR><N CR>2"\n')
 
     notch = randint(0, 1000000)
@@ -243,12 +243,12 @@ WHERE Id = '{id_test}' \
                                        job_syntax, {}, False)
     job_controller.run_job()
     del job_controller
-    with open('some_data_staging.csv') as resulted_file:
+    with open(SqlExecutor.csv_name('some_data_staging')) as resulted_file:
         csv_data = get_bulk_data_from_csv_stream(resulted_file)
         name_idx = csv_data.fields.index('Name')
         assert 1 == len(csv_data.rows)
         assert csv_data.rows[0][name_idx] == str(notch)
-    with open('newids.csv') as newids_file:
+    with open(SqlExecutor.csv_name('newids')) as newids_file:
         csv_data = get_bulk_data_from_csv_stream(newids_file)
         id_idx = csv_data.fields.index('Id')
         try:
@@ -259,7 +259,7 @@ WHERE Id = '{id_test}' \
         for row in csv_data.rows:
             assert len(row[id_idx]) >= 15
 
-    assert open("test_csv.csv").read() == open("test_csv_2.csv").read()
+    assert open(SqlExecutor.csv_name('test_csv')).read() == open(SqlExecutor.csv_name('test_csv_2')).read()
 
 def test_batch_splitter():
     loginit(__name__)

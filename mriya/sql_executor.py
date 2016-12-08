@@ -11,9 +11,11 @@ from mriya.job_syntax import JobSyntax, CSV_KEY, QUERY_KEY
 from mriya.job_syntax import DST_KEY, SRC_KEY, PUBLISH_KEY
 from mriya.log import loginit, LOG, STDOUT
 
+# real data path to updated dynamically
+DATADIRNAME = ''
+
 class SqlExecutor(object):
     def __init__(self, job_syntax_item, variables):
-        #loginit(__name__)
         self.job_syntax_item = job_syntax_item
         self.variables = variables
 
@@ -22,7 +24,7 @@ class SqlExecutor(object):
 
     @staticmethod
     def csv_name(table_name):
-        return table_name + '.csv'
+        return os.path.join(DATADIRNAME, table_name) + '.csv'
 
     @staticmethod
     def csv_size(table_name):

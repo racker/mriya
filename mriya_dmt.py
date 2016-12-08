@@ -6,11 +6,13 @@ __email__ = "yaroslav.litvinov@rackspace.com"
 
 import argparse
 import glob
-import os.path
+import os, errno
 from logging import getLogger
+from configparser import ConfigParser
 from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_controller import JobController
 from mriya.log import loginit, STDOUT, STDERR, LOG
+from mriya.config import *
 
 def run_job_from_file(config_file, job_file, endpoints, variables,
                       debug_steps):
@@ -24,7 +26,8 @@ def run_job_from_file(config_file, job_file, endpoints, variables,
     # main script data
     job_syntax = JobSyntaxExtended(job_file.readlines(),
                                    macro_files)
-    job_controller = JobController(config_file.name,
+    job_controller = JobController(
+        config_file.name,
                                    endpoints,
                                    job_syntax,
                                    variables,
@@ -62,10 +65,6 @@ if __name__ == '__main__':
     import sys  
     reload(sys)  
     sys.setdefaultencoding('utf8')
-    loginit(STDOUT)
-    loginit(STDERR)
-    loginit(LOG)
-    getLogger(STDOUT).info('Starting')
     parser = argparse.ArgumentParser()
     parser = add_args(parser)
     args = parser.parse_args()
@@ -78,6 +77,31 @@ if __name__ == '__main__':
     endpoints = {'src': args.src_name,
                  'dst': args.dst_name}
     input_file = args.job_file
-    print variables
+    if variables:
+        print "Recognize variables", variables
+
+    # Get logfilenae
+    config = ConfigParser()
+    config.read_file(args.conf_file)
+    logdirname = config[DEFAULT_SETTINGS_SECTION][LOGDIR_SETTING]
+    datadirname = config[DEFAULT_SETTINGS_SECTION][DATADIR_SETTING]
+    logpath = os.path.join(logdirname, 
+                           os.path.basename(input_file.name).split('.')[0])
+    try:
+        os.makedirs(logdirname)
+    except OSError, e:
+        if e.errno != errno.EEXIST:
+            raise
+    try:
+        os.makedirs(datadirname)
+    except OSError, e:
+        if e.errno != errno.EEXIST:
+            raise
+
+    loginit(STDOUT)
+    loginit(STDERR)
+    loginit(LOG, logpath + '.log')
+    getLogger(STDOUT).info('Starting')
+
     run_job_from_file(args.conf_file, input_file, endpoints, variables,
                       args.step_by_step)

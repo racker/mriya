@@ -9,8 +9,8 @@ import sys
 
 LOGGING_LEVEL = logging.INFO
 STDOUT = 'stdout' #reserved name
-STDERR = 'error.log' #reserved name
-LOG = 'mriya.log'  #reserved name
+STDERR = 'stderr' #reserved name
+LOG = 'mriya.log' #reserved name
 
 # to avoid add loggers having the same names
 INITIALIZED_LOGGERS = []
@@ -26,11 +26,15 @@ def loginit(name, log_to=None):
 
     if not log_to:
         log_to = name
-    if log_to == STDERR or log_to == LOG:
-        file_handler = logging.FileHandler(name, 'w')
+
+    if name == LOG:
+        file_handler = logging.FileHandler(log_to, 'w')
         log_format = '%(asctime)s %(levelname)-8s %(message)s'
     elif log_to == STDOUT:
         file_handler = logging.StreamHandler(sys.stdout)
+        log_format = '%(message)s'
+    elif log_to == STDERR:
+        file_handler = logging.StreamHandler(sys.stderr)
         log_format = '%(message)s'
     else:
         loginit(name, log_to=STDOUT)

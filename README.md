@@ -20,6 +20,7 @@ Also see tests for syntax examples.
 export PYTHONPATH=pybulk/sfbulk/:.
 
 2. config file
+Use sample-config.ini as a base for your config files.
 2.1. Format
 --- config file sections / options:
 [src]
@@ -34,3 +35,7 @@ host_prefix =
 
 3. run test
 Tests require config file salesforce endpoint sections.
+
+4. Troubleshooting
+4.1. If you getting following error, be sure to install configparser==3.5.0
+     AttributeError: ConfigParser instance has no attribute 'read_file'
