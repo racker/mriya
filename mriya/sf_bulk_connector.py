@@ -41,12 +41,15 @@ class SfBulkConnector(BaseBulkConnector):
         id_idx = result_ids.fields.index('Id')
         success_idx = result_ids.fields.index('Success')
         error_idx = result_ids.fields.index('Error')
+        max_err_count_output = 100
         for item in result_ids.rows:
             if item[success_idx] != 'true':
-                getLogger(STDERR).error('Batch %s-%s: Id=%s, error:%s',
-                                          opname, objname,
-                                          item[id_idx],
-                                          item[error_idx])
+                max_err_count_output = max_err_count_output -1
+                if max_err_count_output > 0:
+                    getLogger(STDERR).error('Batch %s-%s: Id=%s, error:%s',
+                                            opname, objname,
+                                            item[id_idx],
+                                            item[error_idx])
         return result_ids
 
     @staticmethod

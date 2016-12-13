@@ -9,6 +9,7 @@ import glob
 import os, errno
 from logging import getLogger
 from configparser import ConfigParser
+from mriya import sql_executor
 from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_controller import JobController
 from mriya.log import loginit, STDOUT, STDERR, LOG
@@ -57,6 +58,11 @@ def add_args(parser):
     parser.add_argument("--dst-name",
                         help="Name of section from config related to dest",
                         type=str, required=True)
+    parser.add_argument('--logdir', action='store', required=False,
+                        help='Override logdir setting')
+    parser.add_argument('--datadir', action='store', required=False,
+                        help='Override datadir setting')
+
     return parser
 
 
@@ -83,10 +89,20 @@ if __name__ == '__main__':
     # Get logfilenae
     config = ConfigParser()
     config.read_file(args.conf_file)
-    logdirname = config[DEFAULT_SETTINGS_SECTION][LOGDIR_SETTING]
-    datadirname = config[DEFAULT_SETTINGS_SECTION][DATADIR_SETTING]
+    if args.logdir:
+        logdirname = args.logdir
+    else:
+        logdirname = config[DEFAULT_SETTINGS_SECTION][LOGDIR_SETTING]
+    if args.datadir:
+        datadirname = args.datadir
+    else:
+        datadirname = config[DEFAULT_SETTINGS_SECTION][DATADIR_SETTING]
+    # update data path
+    sql_executor.DATADIRNAME = datadirname
+    # prepare log path
     logpath = os.path.join(logdirname, 
                            os.path.basename(input_file.name).split('.')[0])
+
     try:
         os.makedirs(logdirname)
     except OSError, e:

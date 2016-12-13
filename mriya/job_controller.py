@@ -56,8 +56,6 @@ class JobController(object):
         self.variables = variables
         self.debug_steps = debug_steps
         self.external_exec = Executor()
-        # update data path
-        sql_executor.DATADIRNAME = self.config[DEFAULT_SETTINGS_SECTION][DATADIR_SETTING]
         # create csv file for an internal batch purpose
         ints1000_csv = SqlExecutor.csv_name(INTS_TABLE)
         with open(ints1000_csv, 'w') as ints:
