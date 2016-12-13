@@ -26,11 +26,11 @@ host_prefix =
 ```
 
 * Tests<br>
-`[test]` section must be specified in order to run tests. Be sure to provide credentials to some test instance as test is adding and removing records from salesforce Account object.
+`[test]` section must be specified in order to run tests. Be sure to provide credentials to non production instance as test itself is adding and removing records from salesforce Account object.
 
 * Troubleshooting<br>
 ```AttributeError: ConfigParser instance has no attribute 'read_file'```<br>
-If you getting that error, be sure to install configparser==3.5.0.
+If you getting that error, be sure to install and use configparser==3.5.0.
 
 * Syntax
 Use sqlite3 sql syntax while querying local csv tables, and SF bulk query language when running SF bulk queries. `csv` endpoint means local sqlite3 table and `src` / `dst` endpoints mean remote SF table. When issuing request endpoint's str will be removed from query.<br>
@@ -58,7 +58,7 @@ variable can only be used in query section, and can't be used after `=>`
 SELECT {FIELDS} FROM csv.table => csv:test
 ```
 
-Output info to stdout. assign value to variable and put it to stdout
+Publish info at stdout. assign value to variable and put it to stdout
 ```sql
 SELECT 'field1,field2' => var:FIELDS:publish
 ```
@@ -71,19 +71,19 @@ SELECT " 'str' as field1, CAST(field2 as INTEGER) FROM csv.table" \
 SELECT {FIELDS} => csv:newtable
 ```
 
-Make bulk request to `SalesforceTable` table of SF endpoint denoted as `src` and save result into `csv` file `Opportunity1`
+Issue bulk request to SF endpoint denoted as `src` and query table `SalesforceTable`, then save result into `csv` file `Opportunity1`
 ```sql
 SELECT something from src.SalesforceTable => csv:Opportunity1
 ```
 
-Construct query using variable's value and issue request it to SF instance at `dst`, save result into `csv` file 'Opportunity2'
+Construct query using variable's value and issue request it to SF instance at `dst`, save result into `csv` file `Opportunity2`
 ```sql
 SELECT Id,{fields} from dst.SalesforceTable => csv:Opportunity2
 ```
 
-use `\` to make long queries fancier.
-Following query example explanation:<br>
-Select data from local `csv` table `Opportunity2` and save it to another `csv` table `Opportunity_something_update` and then submit update bulk request using data from `Opportunity_something_update` table to `dst` SF instance. Save processed list of ids returned by SF into csv table `Update_Result_Ids`. All the content of table will be submitted as list of batches with max batch size = 10000. Batches will be executed one by one as 'type:sequential' was specified. Batches would run in parallel if type 'type:parallel' or nothing specified [type:parallel is by default]
+Use `\` to make long single queries fancier by writing them in mulitiple lines. If '\' symbol is located at the end of a row it's will be concatenated with next row. **Any** single query is oneliner.
+Following example explanation:<br>
+Select data from local `csv` table `Opportunity2` and save it to another `csv` table `Opportunity_something_update` and then submit update bulk request using data from `Opportunity_something_update` table to `dst` SF instance. Save processed list of ids returned by SF into csv table `Update_Result_Ids`. All the content of table will be submitted as list of batches with max batch size = 10000. Batches will be executed one by one as `type:sequential` was specified. Batches would run in parallel if type `type:parallel` or nothing specified [type:parallel is by default]
 ```sql
 SELECT Id, {fields} FROM csv.Opportunity2 \
 => csv:Opportunity_something_update \
@@ -100,10 +100,10 @@ SELECT f1,f2 FROM csv.foo => csv:export => src:update:10000:list_of_processed_id
 ```
 
 Macroses<br>
-macro will be substituted by its value from corresponding file.<br>
+macro will be substituted by its value read from corresponding file.<br>
 Macro file `macro_test` is supposed to be existed in scripts folder. All previously defined variables can be used inside of macros. Macro param value should not contains spaces. Many macro params may be specified(params set is different for diferent macroses).
 ```sql
-SELECT 'hello' => var:VAR1
+SELECT 'hello' => var:VAR1 \
 => macro:macro_test \
    :PARAM1:param_value_no_spaces \
    :PARAM2:some_table
