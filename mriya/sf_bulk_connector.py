@@ -20,8 +20,7 @@ class SfBulkConnector(BaseBulkConnector):
         self.bulk.login(username=self.conn_param.username,
                         password=self.conn_param.password,
                         security_token=self.conn_param.token,
-                        #sf_version=38.0,
-                        sandbox=True)
+                        sandbox=not self.conn_param.production)
 
     def handle_batch_error(self, batch_id):
         """ Handle bulk error, when no records processed """

@@ -23,6 +23,7 @@ consumer_secret =
 username = 
 password = 
 host_prefix = 
+production = True/False
 ```
 
 * Tests<br>

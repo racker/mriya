@@ -10,7 +10,7 @@ from mriya.config import *
 
 ConnectorParam = namedtuple('ConnectorParam',
                          ['username', 'password', 'url_prefix',
-                          'organization_id', 'consumer_key',
+                          'production', 'consumer_key',
                           'consumer_secret', 'token'])
 
 QUERY_LIMIT = 200
@@ -20,7 +20,7 @@ def get_conn_param(conf_dict):
     param = ConnectorParam(conf_dict[USERNAME_SETTING].encode('utf-8'),
                            conf_dict[PASSWORD_SETTING].encode('utf-8'),
                            conf_dict[HOST_PREFIX_SETTING].encode('utf-8'),
-                           '',
+                           conf_dict.getboolean(PRODUCTION_SETTING),
                            conf_dict[CONSUMER_KEY_SETTING].encode('utf-8'),
                            conf_dict[CONSUMER_SECRET_SETTING].encode('utf-8'),
                            '')

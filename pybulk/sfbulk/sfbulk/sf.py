@@ -56,7 +56,7 @@ class sf(object):
     DOMAIN = u'login'
 
     def login(self, username=u'', password=u'', security_token=u'',
-              sf_version=u'38.0', sandbox=False):
+              sf_version=u'37.0', sandbox=False):
         """
         Sets a sessionid and bulk_server
         where `sessionid` is the session ID to use
