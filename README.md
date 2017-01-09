@@ -27,7 +27,7 @@ production = True/False
 ```
 
 * Tests<br>
-`[test]` section must be specified in order to run tests. Be sure to provide credentials to non production instance as test itself is adding and removing records from salesforce Account object.
+For test config `test-config.ini` which name is hardcoded `[test]` section must be specified in order to run tests. Be sure to provide credentials to non production instance as test itself is adding and removing records from salesforce Account object.
 
 * Troubleshooting<br>
 ```AttributeError: ConfigParser instance has no attribute 'read_file'```<br>
