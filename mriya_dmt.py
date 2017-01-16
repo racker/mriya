@@ -10,15 +10,17 @@ import os, errno
 from logging import getLogger
 from configparser import ConfigParser
 from sets import Set
+from collections import namedtuple
 from mriya import sql_executor
 from mriya.job_syntax import OP_KEY, OP_DELETE, OP_UPDATE, OP_UPSERT, OP_INSERT
+from mriya.job_syntax import CSV_KEY, CSVLIST_KEY
 from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_controller import JobController
 from mriya.log import loginit, STDOUT, STDERR, LOG
 from mriya.config import *
 
 def run_job_from_file(config_file, job_file, endpoints, variables,
-                      debug_steps, read_only):
+                      debug_steps, read_only, save_graph):
     jobs_dir = os.path.dirname(job_file.name)
     macro_files = {}
     for macro_filename in glob.glob('%s/macro_*.sql' % jobs_dir):
@@ -39,7 +41,35 @@ def run_job_from_file(config_file, job_file, endpoints, variables,
 '%s' operations can't be used in current session"
         print fmt_mes % (','.join(Set(restricted_ops)))
         exit(1)
-        
+
+    # graph create begin
+    if save_graph:
+        from pprint import PrettyPrinter
+        PrettyPrinter(indent=4).pprint(job_syntax.items())
+        nodes = {}
+        i = 0
+        GraphNodeData = namedtuple('GraphNodeData', ['id', 'edges'])
+        for x in job_syntax:
+            edges = []
+            if CSVLIST_KEY in x:
+                edges.extend(x[CSVLIST_KEY])
+            if CSV_KEY in x:
+                node_name = x[CSV_KEY]
+                nodes[node_name] = GraphNodeData(id=i, edges=edges)
+            i = i + 1
+        from graphviz import Digraph
+        G = Digraph(format='png')
+        for k,v in nodes.iteritems():
+            #G.add_node(v.id)
+            G.node(str(v.id), k)
+        for k,v in nodes.iteritems():
+            for edge in v.edges:
+                if edge in nodes:
+                    G.edge(str(nodes[edge].id), str(v.id))
+        G.view('/tmp/simple')
+        exit(0)
+        # graph end
+
     job_controller = JobController(
         config_file.name,
                                    endpoints,
@@ -77,6 +107,9 @@ def add_args(parser):
                         help='Override datadir setting')
     parser.add_argument('-read-only', action='store_true', required=False,
                         help='Only select queries are allowed')
+    parser.add_argument('--save-graph-and-exit', action='store', required=False,
+                        help='Save transformation graph and exit')
+    
     return parser
 
 
@@ -134,4 +167,5 @@ if __name__ == '__main__':
     getLogger(STDOUT).info('Starting')
 
     run_job_from_file(args.conf_file, input_file, endpoints, variables,
-                      args.step_by_step, args.read_only)
+                      args.step_by_step, args.read_only,
+                      args.save_graph_and_exit)
