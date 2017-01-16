@@ -24,7 +24,7 @@ def run_job_from_file(config_file, job_file, endpoints, variables,
     for macro_filename in glob.glob('%s/macro_*.sql' % jobs_dir):
         with open(macro_filename) as macro_file:
             macro_name = os.path.basename(macro_filename).split('.')[0]
-            print "import macros", macro_name
+            getLogger(LOG).info('import macros %s', macro_name)
             macro_files[macro_name] = macro_file.readlines()
     # main script data
     job_syntax = JobSyntaxExtended(job_file.readlines(),
@@ -39,13 +39,13 @@ def run_job_from_file(config_file, job_file, endpoints, variables,
 '%s' operations can't be used in current session"
         print fmt_mes % (','.join(Set(restricted_ops)))
         exit(1)
-        
+
     job_controller = JobController(
         config_file.name,
-                                   endpoints,
-                                   job_syntax,
-                                   variables,
-                                   debug_steps)
+        endpoints,
+        job_syntax,
+        variables,
+        debug_steps)
     job_controller.run_job()
 
 def vars_from_args(args_var):
@@ -131,7 +131,7 @@ if __name__ == '__main__':
     loginit(STDOUT)
     loginit(STDERR)
     loginit(LOG, logpath + '.log')
-    getLogger(STDOUT).info('Starting')
+    getLogger(STDOUT).info('Starting %s' % input_file.name)
 
     run_job_from_file(args.conf_file, input_file, endpoints, variables,
                       args.step_by_step, args.read_only)
