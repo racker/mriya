@@ -27,6 +27,18 @@ class SqlExecutor(object):
         return os.path.join(DATADIRNAME, table_name) + '.csv'
 
     @staticmethod
+    def valid_csv_exist(table_name):
+        fname = SqlExecutor.csv_name(table_name)
+        try:
+            with open(fname) as f:
+                if f.readline().find('<result-list xmlns=') == -1:
+                    return True
+                else:
+                    return False
+        except:
+            return False
+    
+    @staticmethod
     def csv_size(table_name):
         if os.path.isfile(SqlExecutor.csv_name(table_name)):
             return os.stat(SqlExecutor.csv_name(table_name)).st_size

@@ -93,7 +93,7 @@ class JobController(object):
             if not is_var and is_csv and is_cache:
                 csv_name = SqlExecutor.csv_name(job_syntax_item[CSV_KEY])
                 csv_size = SqlExecutor.csv_size(job_syntax_item[CSV_KEY])
-                if csv_size:
+                if csv_size and SqlExecutor.valid_csv_exist(job_syntax_item[CSV_KEY]):
                     getLogger(LOG).info(
                         "SKIP query: '%s', csvfile exist: %s",
                         query, csv_name)
