@@ -6,6 +6,7 @@ __email__ = "yaroslav.litvinov@rackspace.com"
 
 from io import BytesIO
 from mriya.opexecutor import Executor
+from mriya.bulk_data import get_bulk_data_from_csv_stream
 
 EXPORT_SCRIPT_FMT='create table {name}(id int, field string, field2 string);\n\
 insert into {name} values(1, "hi", "there");\n\
@@ -42,6 +43,15 @@ man\n\
 hi",aha\n\
 6,#N/A,aha\n'
 
+def cmp_csv_lines(csv1, csv2):
+    """ Cmp csv after proper parsing instead of blind data coparison.
+        This approach solves problem with different csv rows endings
+        '\n' vs '\r\n' """
+    from StringIO import StringIO
+    lines1 = get_bulk_data_from_csv_stream(StringIO(csv1))
+    lines2 = get_bulk_data_from_csv_stream(StringIO(csv2))
+    return lines1 == lines2
+
 def observer(refname, retcode, output):
     data = None
     if output:
@@ -57,7 +67,8 @@ def create_table_get_csv_data(tablename, script):
     res = executor.poll_for_complete(observer)
     del executor
     try:
-        assert res[tablename] == CSV_DATA
+        assert cmp_csv_lines(res[tablename], CSV_DATA)
+        #assert res[tablename] == CSV_DATA
     except:
         print '-------'
         print res[tablename]
