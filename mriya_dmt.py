@@ -10,12 +10,13 @@ import os, errno
 from logging import getLogger
 from configparser import ConfigParser
 from sets import Set
-from collections import namedtuple
 from mriya import sql_executor
 from mriya.job_syntax import *
 from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_controller import JobController
 from mriya.log import loginit, STDOUT, STDERR, LOG
+from mriya.graph import create_graph_data
+from mriya.graph import create_displayable_graph
 from mriya.config import *
 
 def run_job_from_file(config_file, job_file, endpoints, variables,
@@ -45,43 +46,11 @@ def run_job_from_file(config_file, job_file, endpoints, variables,
     tmp_string = PrettyPrinter(indent=4).pformat(job_syntax.items())
     getLogger(LOG).info('\n'+tmp_string)
 
-    # graph create begin
     if save_graph_file:
-        nodes = {}
-        i = 0
-        GraphNodeData = namedtuple('GraphNodeData', ['id', 'edges'])
-        for x in job_syntax:
-            edges = []
-            if CSVLIST_KEY in x:
-                edges.extend(x[CSVLIST_KEY])
-            elif OBJNAME_KEY in x:
-                node_name = x[FROM_KEY] + '.' + x[OBJNAME_KEY]
-                edges.append(node_name)
-                nodes[node_name] = GraphNodeData(id=i, edges=[])
-                i = i + 1
-            if CSV_KEY in x:
-                node_name = x[CSV_KEY]
-                nodes[node_name] = GraphNodeData(id=i, edges=edges)
-                print '%s : "%s"\n' % (x[CSV_KEY], x[LINE_KEY])
-                if OP_KEY in x:
-                    i = i + 1
-                    if DST_KEY in x:
-                        node2_name = 'dst:%s:%s' % (x[OP_KEY], x[DST_KEY])
-                    elif SRC_KEY in x:
-                        node2_name = 'sr:%s:%s' % (x[OP_KEY], x[SRC_KEY])
-                    nodes[node2_name] = GraphNodeData(id=i, edges=[node_name])
-            i = i + 1
-        from graphviz import Digraph
-        G = Digraph(format='dot')
-        for k,v in nodes.iteritems():
-            G.node(str(v.id), label=k, _attributes={'T':'aesr;kawer;kqwr;'})
-        for k,v in nodes.iteritems():
-            for edge in v.edges:
-                if edge in nodes:
-                    G.edge(str(nodes[edge].id), str(v.id))
-        G.view(save_graph_file.name)
+        graph_data = create_graph_data(job_syntax)
+        graph = create_displayable_graph(graph_data)
+        graph.view(save_graph_file.name)
         exit(0)
-    # graph end
 
     job_controller = JobController(
         config_file.name,
