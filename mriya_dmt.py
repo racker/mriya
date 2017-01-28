@@ -47,9 +47,9 @@ def run_job_from_file(config_file, job_file, endpoints, variables,
     getLogger(LOG).info('\n'+tmp_string)
 
     if save_graph_file:
-        graph_data = create_graph_data(job_syntax)
+        graph_data = create_graph_data([job_syntax])
         graph = create_displayable_graph(graph_data)
-        graph.view(save_graph_file.name)
+        graph.view(save_graph_file)
         exit(0)
 
     job_controller = JobController(
@@ -89,8 +89,7 @@ def add_args(parser):
                         help='Override datadir setting')
     parser.add_argument('-read-only', action='store_true', required=False,
                         help='Only select queries are allowed')
-    parser.add_argument('--save-graph-and-exit', action='store', required=False,
-                        type=argparse.FileType('w'),
+    parser.add_argument('--save-graph-and-exit', action='store_true', required=False,
                         help='Save transformation graph and exit')
     
     return parser
@@ -132,6 +131,10 @@ if __name__ == '__main__':
     # prepare log path
     logpath = os.path.join(logdirname, 
                            os.path.basename(input_file.name).split('.')[0])
+    # prepare graph path
+    graphpath = None
+    if args.save_graph_and_exit:
+        graphpath = os.path.basename(input_file.name).split('.')[0]
 
     try:
         os.makedirs(logdirname)
@@ -150,5 +153,4 @@ if __name__ == '__main__':
     getLogger(STDOUT).info('Starting %s' % input_file.name)
 
     run_job_from_file(args.conf_file, input_file, endpoints, variables,
-                      args.step_by_step, args.read_only,
-                      args.save_graph_and_exit)
+                      args.step_by_step, args.read_only, graphpath)

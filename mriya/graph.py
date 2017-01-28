@@ -9,7 +9,11 @@ from graphviz import Digraph
 from mriya.job_syntax_extended import BATCH_KEY
 from mriya.job_syntax import *
 
-GraphNodeData = namedtuple('GraphNodeData', ['id', 'edges'])
+GraphNodeData = namedtuple('GraphNodeData', ['id', 'edges', 'shape', 'color'])
+SHAPE_BOX = 'box'
+SHAPE_ELLIPSE = 'ellipse'
+COLOR_GREEN = 'green'
+COLOR_RED = 'red'
 
 def add_item_to_graph(item_x, idx, graph_nodes):
     edges = []
@@ -18,11 +22,14 @@ def add_item_to_graph(item_x, idx, graph_nodes):
     elif OBJNAME_KEY in item_x:
         node_name = item_x[FROM_KEY] + '.' + item_x[OBJNAME_KEY]
         edges.append(node_name)
-        graph_nodes[node_name] = GraphNodeData(id=idx, edges=[])
+        graph_nodes[node_name] = GraphNodeData(id=idx, edges=[],
+                                               shape=SHAPE_BOX, color=COLOR_GREEN)
         idx = idx + 1
     if CSV_KEY in item_x:
         node_name = item_x[CSV_KEY]
-        graph_nodes[node_name] = GraphNodeData(id=idx, edges=edges)
+        print "node_name", node_name
+        graph_nodes[node_name] = GraphNodeData(id=idx, edges=edges,
+                                               shape=SHAPE_ELLIPSE, color='')
         print '%s : "%s"\n' % (item_x[CSV_KEY], item_x[LINE_KEY])
         if OP_KEY in item_x:
             idx = idx + 1
@@ -32,67 +39,46 @@ def add_item_to_graph(item_x, idx, graph_nodes):
             elif SRC_KEY in item_x:
                 node2_name = 'src:%s:%s' % (item_x[OP_KEY],
                                             item_x[SRC_KEY])
+            while node2_name in graph_nodes:
+                node2_name += '.'
             graph_nodes[node2_name] \
-                = GraphNodeData(id=idx, edges=[node_name])
+                = GraphNodeData(id=idx, edges=[node_name],
+                                shape=SHAPE_BOX, color=COLOR_RED)
+            idx = idx + 1
+            node3_name = item_x[NEW_IDS_TABLE]
+            graph_nodes[node3_name] \
+                = GraphNodeData(id=idx, edges=[node2_name],
+                                shape=SHAPE_ELLIPSE, color='')
+            
     idx = idx + 1
     return (idx, graph_nodes)
 
-def create_graph_data(job_syntax):
+def create_graph_data(list_of_job_syntax):
+    """ merge list of job_syntaxes into a single graph data"""
     nodes = {}
     node_id = 0
-    GraphNodeData = namedtuple('GraphNodeData', ['id', 'edges'])
-    for item_x in job_syntax:
-        if BATCH_KEY in item_x:
-            node_name = item_x[BATCH_BEGIN_KEY][1]
-            print "node_name", type(node_name), node_name            
-            edges = item_x[CSVLIST_KEY]
-            nodes[node_name] = GraphNodeData(id=node_id, edges=edges)
-            node_id = node_id + 1
-            print edges, item_x[LINE_KEY]
-            for item_nested in item_x[BATCH_KEY]:
-                node_id, nodes = add_item_to_graph(item_nested, node_id, nodes)
-        else:
-            node_id, nodes = add_item_to_graph(item_x, node_id, nodes)
+    for job_syntax in list_of_job_syntax:
+        for item_x in job_syntax:
+            if BATCH_KEY in item_x:
+                node_name = item_x[BATCH_BEGIN_KEY][1]
+                print "node_name", type(node_name), node_name            
+                edges = item_x[CSVLIST_KEY]
+                nodes[node_name] = GraphNodeData(id=node_id, edges=edges,
+                                                 shape=SHAPE_ELLIPSE, color='')
+                node_id = node_id + 1
+                print edges, item_x[LINE_KEY]
+                for item_nested in item_x[BATCH_KEY]:
+                    node_id, nodes = add_item_to_graph(item_nested, node_id, nodes)
+            else:
+                node_id, nodes = add_item_to_graph(item_x, node_id, nodes)
     return nodes
 
-@staticmethod
-def parse_recursive(nodes, node_id, self_values):
-    res = []
-    batch_items = []
-    begin_counter = 0
-    end_counter = 0
-    for job_syntax_item in self_values:
-        if BATCH_BEGIN_KEY in job_syntax_item:
-            begin_counter += 1
-        if BATCH_END_KEY in job_syntax_item:
-            end_counter += 1
-            if begin_counter == end_counter:
-                batch_items.append(job_syntax_item)
-        
-        if begin_counter > end_counter:
-            batch_items.append(job_syntax_item)
-        elif begin_counter == end_counter and begin_counter != 0:
-            # add all saved items, 
-            # skip first batch_begin, last batch_end
-            nested = JobSyntaxExtended.parse_recursive(
-                batch_items[1:-1])
-            batch = batch_items[0]
-            batch[BATCH_KEY] = nested
-            res.append(batch)
-            del batch_items[:]
-            begin_counter = 0
-            end_counter = 0
-        elif begin_counter != 0 or end_counter != 0:
-            assert(0)
-        else:
-            res.append(job_syntax_item)
-    return res
-
-
-def create_displayable_graph(graph_data):
-    G = Digraph(format='dot')
+def create_displayable_graph(graph_data, graph_format):
+    G = Digraph(format=graph_format)
     for k,v in graph_data.iteritems():
-        G.node(str(v.id), label=k, _attributes={'T':'some attribute'})
+        G.node(str(v.id), label=k,
+               _attributes={'shape': v.shape,
+                            'color': v.color})
     for k,v in graph_data.iteritems():
         for edge in v.edges:
             if edge in graph_data:
