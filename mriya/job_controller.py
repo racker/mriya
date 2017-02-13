@@ -236,6 +236,9 @@ class JobController(object):
             objname = job_syntax_item[endpoint]
             conn = self.endpoints.endpoint(endpoint)
             max_batch_size = int(job_syntax_item[BATCH_SIZE_KEY])
+            lines = len(csv_data)
+            if lines:
+                lines = lines - 1
             getLogger(STDOUT).info('EXECUTE: %s %s, lines count=%d',
                                      opname, objname, len(csv_data))
             t_before = time.time()

@@ -54,6 +54,11 @@ class SqlExecutor(object):
             getLogger(STDOUT).info('.')
 
     @staticmethod
+    def get_query_var_names(query):
+        import re
+        return re.findall(r'\{(.*?)\}',query)
+            
+    @staticmethod
     def prepare_query_put_vars(query, variables):
         for var_name, var_value in variables.iteritems():
             if type(var_value) != list:
