@@ -93,7 +93,7 @@ class JobController(object):
             if not is_var and is_csv and is_cache:
                 csv_name = SqlExecutor.csv_name(job_syntax_item[CSV_KEY])
                 csv_size = SqlExecutor.csv_size(job_syntax_item[CSV_KEY])
-                if csv_size:
+                if csv_size and SqlExecutor.valid_csv_exist(job_syntax_item[CSV_KEY]):
                     getLogger(LOG).info(
                         "SKIP query: '%s', csvfile exist: %s",
                         query, csv_name)
@@ -236,6 +236,9 @@ class JobController(object):
             objname = job_syntax_item[endpoint]
             conn = self.endpoints.endpoint(endpoint)
             max_batch_size = int(job_syntax_item[BATCH_SIZE_KEY])
+            lines = len(csv_data)
+            if lines:
+                lines = lines - 1
             getLogger(STDOUT).info('EXECUTE: %s %s, lines count=%d',
                                      opname, objname, len(csv_data))
             t_before = time.time()

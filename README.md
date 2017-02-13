@@ -6,10 +6,13 @@ query,insert,update,delete. The results of queries are saving into
 csv files that are readable by sqlite3. So any data transformation can
 be done locally by sqlite and then submitted to salesforce table. One
 thing to note, that Salesforce bulk query syntax is little bit
-different from SOAP query syntax.
+different from SOAP query syntax. For complicated sql files which
+doesn't use batch_begin,batch_end aka loops there is useful feature
+drawing all sql operations as single direct acyclic graph (DAG).
 
 * Install.<br>Requirements and export PYTHONPATH:
 ```
+apt-get install xdot
 pip install -r requirements.txt
 export PYTHONPATH=pybulk/sfbulk/:.
 ```
@@ -23,10 +26,11 @@ consumer_secret =
 username = 
 password = 
 host_prefix = 
+production = True/False
 ```
 
 * Tests<br>
-`[test]` section must be specified in order to run tests. Be sure to provide credentials to non production instance as test itself is adding and removing records from salesforce Account object.
+For test config `test-config.ini` which name is hardcoded `[test]` section must be specified in order to run tests. Be sure to provide credentials to non production instance as test itself is adding and removing records from salesforce Account object.
 
 * Troubleshooting<br>
 ```AttributeError: ConfigParser instance has no attribute 'read_file'```<br>
@@ -71,9 +75,10 @@ SELECT " 'str' as field1, CAST(field2 as INTEGER) FROM csv.table" \
 SELECT {FIELDS} => csv:newtable
 ```
 
-Issue bulk request to SF endpoint denoted as `src` and query table `SalesforceTable`, then save result into `csv` file `Opportunity1`
+Issue bulk request to SF endpoint denoted as `src` and query table `SalesforceTable`, then save result into `csv` file `Opportunity1`<br>
+':cache' means use already existing csv file Opportunity1, instead of requesting it again
 ```sql
-SELECT something from src.SalesforceTable => csv:Opportunity1
+SELECT something from src.SalesforceTable => csv:Opportunity1:cache
 ```
 
 Construct query using variable's value and issue request it to SF instance at `dst`, save result into `csv` file `Opportunity2`
@@ -100,6 +105,8 @@ SELECT f1,f2 FROM csv.foo => csv:export => src:update:10000:list_of_processed_id
 ```
 
 Macroses<br>
+Any sql script considered to be macro if starting as 'macro_' and located in the same directory as job-file<br>
+One macro can be nested into another macro<br>
 macro will be substituted by its value read from corresponding file.<br>
 Macro file `macro_test` is supposed to be existed in scripts folder. All previously defined variables can be used inside of macros. Macro param value should not contains spaces. Many macro params may be specified(params set is different for diferent macroses).
 ```sql

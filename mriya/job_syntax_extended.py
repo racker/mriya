@@ -19,27 +19,17 @@ class JobSyntaxExtended(JobSyntax):
         # now self.values has parsed items
         #loginit(__name__)
 
-        all_loaded = JobSyntaxExtended.foo(
+        all_loaded = JobSyntaxExtended.load_all_macro_recursively(
             main, macroses)
         self.values = JobSyntax(all_loaded)
-        
-        # self.values = JobSyntaxExtended.integrate_macros_into_job_items(
-        #     self.values, macroses)
-        # print self.values
-
-        # # support nested macros inside another macros
-        # self.values = JobSyntaxExtended.integrate_macros_into_job_items(
-        #     self.values, macroses)
-
-        # # support nested macros inside another nested macros !!!!
-        # self.values = JobSyntaxExtended.integrate_macros_into_job_items(
-        #     self.values, macroses)
         
         self.values_extended = JobSyntaxExtended.parse_recursive(
             self.values)
 
     @staticmethod
-    def foo(lines, macroses):
+    def load_all_macro_recursively(lines, macroses):
+        """ Inject every noticed macro by its content.
+            Nested macro inside of macro are supported. """
         lines = JobSyntax.prepare_lines(lines)
         res = []
         for line in lines:
@@ -55,30 +45,14 @@ class JobSyntaxExtended(JobSyntax):
                     replaces = item[REPLACE_KEY]
                 macro_lines = JobSyntaxExtended.replace_in_lines(
                     macroses[macro_name], replaces)
-                upd = JobSyntaxExtended.foo(macro_lines, macroses)
+                upd = JobSyntaxExtended.load_all_macro_recursively(
+                    macro_lines, macroses)
                 macro_lines = JobSyntaxExtended.replace_in_lines(
                     upd, replaces)
                 res.extend(macro_lines)
             else:
                 res.append(line)
         return res
-
-
-    @staticmethod
-    def load_recursively(values, macroses, ismacro):
-        res_values = []
-        if ismacro:
-            values = JobSyntaxExtended.integrate_macros_into_job_items(
-                values, macroses)
-        for val in values:
-            if MACRO_KEY in val:
-                res_values.extend( 
-                    JobSyntaxExtended.load_recursively(
-                        [val], macroses, True))
-            else:
-                res_values.append(val)
-        return res_values
-
 
     def __iter__(self):
         for lst in self.values_extended:
@@ -101,27 +75,6 @@ class JobSyntaxExtended(JobSyntax):
                 res.append(line)
         else:
             res = lines
-        return res
-
-    @staticmethod
-    def integrate_macros_into_job_items(job_syntax_items, macroses):
-        if macroses:
-            res = []
-            for item in job_syntax_items:
-                if MACRO_KEY in item:
-                    macro_name = item[MACRO_KEY]
-                    if REPLACE_KEY in item:
-                        macro_lines = JobSyntaxExtended.replace_in_lines(
-                            macroses[macro_name],
-                            item[REPLACE_KEY])
-                    else:
-                        macro_lines = macroses[macro_name]
-                    macro_job_syntax_lines = JobSyntax(macro_lines)
-                    res.extend(macro_job_syntax_lines)
-                else:
-                    res.append(item)
-        else:
-            res = job_syntax_items
         return res
 
     def batch_var_name(self, watch_batch_var, job_syntax_item):

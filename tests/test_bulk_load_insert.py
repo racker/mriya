@@ -13,10 +13,6 @@ from configparser import ConfigParser
 from mriya.data_connector import get_conn_param
 from mriya.data_connector import conn_param_set_token
 from mriya.data_connector import AuthToken
-from mriya.test_data_generator import DataGenerator
-from mriya.test_data_generator import data_struct
-from mriya.test_data_generator import defaults
-from mriya.test_data_generator import prefixes
 from mriya.sf_bulk_connector import SfBulkConnector
 from mriya.bulk_data import csv_from_list_of_dicts
 from mriya.bulk_data import parse_batch_res_data
