@@ -62,7 +62,7 @@ def add_args(parser):
     parser.add_argument('--var', nargs='*', action='append')
     parser.add_argument('--logdir', action='store', required=False,
                         help='Override logdir setting')
-    parser.add_argument('--save-graph', action='store', required=False,
+    parser.add_argument('--save-graph', action='store', required=True,
                         type=argparse.FileType('w'),
                         help='Save transformation graph and exit')
     parser.add_argument('--format', action='store', required=False,
