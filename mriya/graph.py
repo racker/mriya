@@ -13,11 +13,14 @@ from mriya.job_syntax import *
 
 GraphNodeData = namedtuple('GraphNodeData',
                            ['id', 'edges', 'shape', 'color', 'style', 'info'])
+SHAPE_STAR = 'star'
 SHAPE_BOX = 'box'
 SHAPE_ELLIPSE = 'ellipse'
 COLOR_GREEN = 'green'
 COLOR_RED = 'red'
 STYLE_DASHED = 'dashed'
+BAD_NODE_STYLE = 'diagonals'
+BAD_NODE = "Can't locate entity in script / External dependency"
 EXTERNAL_OBJECT_READ='Read from salesforce object'
 EXTERNAL_OBJECT_WRITE='Write into salesforce object'
 EXTERNAL_OBJECT_RESULT="List of ids as result of operation on Salesforce object"
@@ -120,7 +123,24 @@ def create_graph_data(list_of_job_syntax):
                 node_id, nodes = add_item_to_graph(item_x, node_id, nodes)
     return nodes
 
+def add_warning_for_absent_nodes(graph_data):
+    # add non existing nodes as specially marked
+    id_non_existing_node = 10000
+    absent_nodes = {}
+    for k,v in graph_data.iteritems():
+        for edge in v.edges:
+            if edge not in graph_data:
+                absent_nodes[edge] \
+                    = GraphNodeData(id=id_non_existing_node, edges=[],
+                                    shape=SHAPE_BOX, color=COLOR_RED,
+                                    style=BAD_NODE_STYLE,
+                                    info=BAD_NODE)
+                id_non_existing_node += 1
+    graph_data.update(absent_nodes)
+    return graph_data
+
 def create_displayable_graph(graph_data, graph_format):
+    graph_data = add_warning_for_absent_nodes(graph_data)
     G = Digraph(format=graph_format)
     # adding nodes
     for k,v in graph_data.iteritems():

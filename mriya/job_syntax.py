@@ -170,6 +170,9 @@ class JobSyntax(object):
             query = query.replace(CSV_KEY+'.', '')
             query = query.replace(DST_KEY+'.', '')
             query = query.replace(SRC_KEY+'.', '')
+        elif CSVLIST_KEY in values and VAR_KEY in values:
+            # don't handle csvlist if it's a CONST VAR 
+            del values[CSVLIST_KEY]
         values[LINE_KEY] = line
         values[QUERY_KEY] = query
         # var only supported by csv

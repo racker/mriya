@@ -19,6 +19,8 @@ from mriya.graph import create_graph_data
 from mriya.graph import create_displayable_graph
 from mriya.config import *
 
+DEFAULT_GRAPH_FORMAT = 'svg'
+
 def print_graph(config_file, job_files, variables, save_graph_file, graph_format):
     list_of_job_syntax = []
     for job_file in job_files:
@@ -40,7 +42,7 @@ def print_graph(config_file, job_files, variables, save_graph_file, graph_format
         
     graph_data = create_graph_data(list_of_job_syntax)
     if not graph_format:
-        graph_format = 'dot'
+        graph_format = DEFAULT_GRAPH_FORMAT
     graph = create_displayable_graph(graph_data, graph_format)
     graph.view(save_graph_file.name)
 
@@ -62,11 +64,11 @@ def add_args(parser):
     parser.add_argument('--var', nargs='*', action='append')
     parser.add_argument('--logdir', action='store', required=False,
                         help='Override logdir setting')
-    parser.add_argument('--save-graph', action='store', required=False,
+    parser.add_argument('--save-graph', action='store', required=True,
                         type=argparse.FileType('w'),
                         help='Save transformation graph and exit')
     parser.add_argument('--format', action='store', required=False,
-                        help='Save graph in format. dot/png ; dot is by default')
+                        help='Save graph in format. dot/png/svg/...; svg is by default')
     return parser
 
 
