@@ -4,17 +4,22 @@ Sqlite3 queries. It supports batches of SQL queries wrapped into
 specific syntax. Salesforce operations supported:
 query,insert,update,delete. The results of queries are saving into
 csv files that are readable by sqlite3. So any data transformation can
-be done locally by sqlite and then submitted to salesforce table. One
+be done locally by sqlite and then submitted to salesforce object. One
 thing to note, that Salesforce bulk query syntax is little bit
-different from SOAP query syntax. For complicated sql files which
-doesn't use batch_begin,batch_end aka loops there is useful feature
-drawing all sql operations as single direct acyclic graph (DAG).
+different from SOAP query syntax. It's an ordinal salesforce tool like
+Dataloader and Workbench. Sql scripts you create can be visualised by
+representing all sql operations as single direct acyclic graph (DAG).
+Graphs are really useful for complicated scripts.
 
 * Install.<br>Requirements and export PYTHONPATH:
 ```
 apt-get install xdot
 pip install -r requirements.txt
 export PYTHONPATH=pybulk/sfbulk/:.
+
+```graph_dmt.py``` creates graphs like
+![Graph](https:// "")
+
 ```
 * Config file.<br>
 Use sample-config.ini as a base for your config files.<br>
