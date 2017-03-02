@@ -15,12 +15,10 @@ from mriya.job_syntax import *
 from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_controller import JobController
 from mriya.log import loginit, STDOUT, STDERR, LOG
-from mriya.graph import create_graph_data
-from mriya.graph import create_displayable_graph
 from mriya.config import *
 
 def run_job_from_file(config_file, job_file, endpoints, variables,
-                      debug_steps, read_only, save_graph_file):
+                      debug_steps, read_only):
     jobs_dir = os.path.dirname(job_file.name)
     macro_files = {}
     for macro_filename in glob.glob('%s/macro_*.sql' % jobs_dir):
@@ -45,12 +43,6 @@ def run_job_from_file(config_file, job_file, endpoints, variables,
     from pprint import PrettyPrinter
     tmp_string = PrettyPrinter(indent=4).pformat(job_syntax.items())
     getLogger(LOG).info('\n'+tmp_string)
-
-    if save_graph_file:
-        graph_data = create_graph_data([job_syntax])
-        graph = create_displayable_graph(graph_data)
-        graph.view(save_graph_file)
-        exit(0)
 
     job_controller = JobController(
         config_file.name,
@@ -89,8 +81,6 @@ def add_args(parser):
                         help='Override datadir setting')
     parser.add_argument('-read-only', action='store_true', required=False,
                         help='Only select queries are allowed')
-    parser.add_argument('--save-graph-and-exit', action='store_true', required=False,
-                        help='Save transformation graph and exit')
     
     return parser
 
@@ -131,11 +121,6 @@ if __name__ == '__main__':
     # prepare log path
     logpath = os.path.join(logdirname, 
                            os.path.basename(input_file.name).split('.')[0])
-    # prepare graph path
-    graphpath = None
-    if args.save_graph_and_exit:
-        graphpath = os.path.basename(input_file.name).split('.')[0]
-
     try:
         os.makedirs(logdirname)
     except OSError, e:
@@ -153,4 +138,4 @@ if __name__ == '__main__':
     getLogger(STDOUT).info('Starting %s' % input_file.name)
 
     run_job_from_file(args.conf_file, input_file, endpoints, variables,
-                      args.step_by_step, args.read_only, graphpath)
+                      args.step_by_step, args.read_only)
