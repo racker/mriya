@@ -11,14 +11,14 @@ Dataloader and Workbench. Sql scripts you create can be visualised by
 representing all sql operations as single direct acyclic graph (DAG).
 Graphs are really useful for complicated scripts.
 
+Following is an example of a graph representation. Click to open it in chrome/firefox.
+![example of graph](https://rawgit.com/YaroslavLitvinov/mriya/master/readme/graph.svg)
+
 * Install.<br>Requirements and export PYTHONPATH:
 ```
 apt-get install xdot
 pip install -r requirements.txt
 export PYTHONPATH=pybulk/sfbulk/:.
-
-```graph_dmt.py``` creates graphs like
-![Graph](https:// "")
 
 ```
 * Config file.<br>
