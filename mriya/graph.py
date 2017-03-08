@@ -12,7 +12,7 @@ from mriya.job_syntax_extended import BATCH_KEY
 from mriya.job_syntax import *
 
 GraphNodeData = namedtuple('GraphNodeData',
-                           ['id', 'edges', 'shape', 'color', 'style', 'info'])
+                           ['id', 'edges', 'shape', 'color', 'style', 'info', 'href'])
 SHAPE_STAR = 'star'
 SHAPE_BOX = 'box'
 SHAPE_ELLIPSE = 'ellipse'
@@ -25,7 +25,7 @@ EXTERNAL_OBJECT_READ='Read from salesforce object'
 EXTERNAL_OBJECT_WRITE='Write into salesforce object'
 EXTERNAL_OBJECT_RESULT="List of ids as result of operation on Salesforce object"
 
-def add_item_to_graph(item_x, idx, graph_nodes):
+def add_item_to_graph(item_x, idx, graph_nodes, csvdir):
     edges = []
     # get csv relations
     if CSVLIST_KEY in item_x:
@@ -37,16 +37,20 @@ def add_item_to_graph(item_x, idx, graph_nodes):
                                                shape=SHAPE_BOX,
                                                color=COLOR_GREEN,
                                                style='',
-                                               info=EXTERNAL_OBJECT_READ)
+                                               info=EXTERNAL_OBJECT_READ,
+                                               href='')
         idx = idx + 1
     # get var relations
     if QUERY_KEY in item_x:
         edges.extend(SqlExecutor.get_query_var_names(item_x[QUERY_KEY]))
 
+    csvhref = ''
     nodeinfo = ''
     if LINE_KEY in item_x:
         nodeinfo = item_x[LINE_KEY]
-    
+    if CSV_KEY in item_x and csvdir and len(csvdir):
+        csvhref = '%s/%s.csv' % (csvdir, item_x[CSV_KEY])
+
     # var nodes
     if VAR_KEY in item_x:
         node_name = item_x[VAR_KEY]
@@ -59,7 +63,8 @@ def add_item_to_graph(item_x, idx, graph_nodes):
                                                shape=SHAPE_ELLIPSE,
                                                style=STYLE_DASHED,
                                                color=color,
-                                               info=nodeinfo)
+                                               info=nodeinfo,
+                                               href=csvhref)
         print '%s : "%s"\n' % (item_x[VAR_KEY], item_x[LINE_KEY])
         idx = idx + 1
     # csv nodes  
@@ -72,7 +77,8 @@ def add_item_to_graph(item_x, idx, graph_nodes):
                                                shape=SHAPE_ELLIPSE,
                                                color='',
                                                style='',
-                                               info=nodeinfo)
+                                               info=nodeinfo,
+                                               href=csvhref)
         print '%s : "%s"\n' % (item_x[CSV_KEY], item_x[LINE_KEY])
         if OP_KEY in item_x:
             idx = idx + 1
@@ -88,7 +94,8 @@ def add_item_to_graph(item_x, idx, graph_nodes):
                 = GraphNodeData(id=idx, edges=[node_name],
                                 shape=SHAPE_BOX, color=COLOR_RED,
                                 style='',
-                                info=EXTERNAL_OBJECT_WRITE)
+                                info=EXTERNAL_OBJECT_WRITE,
+                                href='')
             idx = idx + 1
             # add node as result of operation
             node3_name = item_x[NEW_IDS_TABLE]
@@ -96,12 +103,13 @@ def add_item_to_graph(item_x, idx, graph_nodes):
                 = GraphNodeData(id=idx, edges=[node2_name],
                                 shape=SHAPE_ELLIPSE, color='',
                                 style='',
-                                info=EXTERNAL_OBJECT_RESULT)
+                                info=EXTERNAL_OBJECT_RESULT,
+                                href='')
             
     idx = idx + 1
     return (idx, graph_nodes)
 
-def create_graph_data(list_of_job_syntax):
+def create_graph_data(list_of_job_syntax, csvdir):
     """ merge list of job_syntaxes into a single graph data"""
     nodes = {}
     node_id = 0
@@ -114,13 +122,16 @@ def create_graph_data(list_of_job_syntax):
                 nodes[node_name] = GraphNodeData(id=node_id, edges=edges,
                                                  shape=SHAPE_ELLIPSE, color='',
                                                  style='',
-                                                 info='')
+                                                 info='',
+                                                 href='')
                 node_id = node_id + 1
                 print edges, item_x[LINE_KEY]
                 for item_nested in item_x[BATCH_KEY]:
-                    node_id, nodes = add_item_to_graph(item_nested, node_id, nodes)
+                    node_id, nodes = add_item_to_graph(item_nested, node_id, nodes,
+                                                       csvdir)
             else:
-                node_id, nodes = add_item_to_graph(item_x, node_id, nodes)
+                node_id, nodes = add_item_to_graph(item_x, node_id, nodes,
+                                                   csvdir)
     return nodes
 
 def add_warning_for_absent_nodes(graph_data):
@@ -134,7 +145,8 @@ def add_warning_for_absent_nodes(graph_data):
                     = GraphNodeData(id=id_non_existing_node, edges=[],
                                     shape=SHAPE_BOX, color=COLOR_RED,
                                     style=BAD_NODE_STYLE,
-                                    info=BAD_NODE)
+                                    info=BAD_NODE,
+                                    href='')
                 id_non_existing_node += 1
     graph_data.update(absent_nodes)
     return graph_data
@@ -148,7 +160,8 @@ def create_displayable_graph(graph_data, graph_format):
                _attributes={'shape': v.shape,
                             'color': v.color,
                             'style': v.style,
-                            'tooltip': v.info.replace(',', ', ')})
+                            'tooltip': v.info.replace(',', ', '),
+                            'href': v.href})
     # adding edges
     for k,v in graph_data.iteritems():
         for edge in v.edges:

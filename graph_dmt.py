@@ -20,8 +20,10 @@ from mriya.graph import create_displayable_graph
 from mriya.config import *
 
 DEFAULT_GRAPH_FORMAT = 'svg'
+DEFAULT_CSV_FOLDER_TO_ATTACH_TO_SVG = 'data'
 
-def print_graph(config_file, job_files, variables, save_graph_file, graph_format):
+def print_graph(config_file, job_files, variables, save_graph_file,
+                graph_format, csvdirpath):
     list_of_job_syntax = []
     for job_file in job_files:
         jobs_dir = os.path.dirname(job_file.name)
@@ -40,7 +42,7 @@ def print_graph(config_file, job_files, variables, save_graph_file, graph_format
         tmp_string = PrettyPrinter(indent=4).pformat(job_syntax.items())
         getLogger(LOG).info('\n'+tmp_string)
         
-    graph_data = create_graph_data(list_of_job_syntax)
+    graph_data = create_graph_data(list_of_job_syntax, csvdirpath)
     if not graph_format:
         graph_format = DEFAULT_GRAPH_FORMAT
     graph = create_displayable_graph(graph_data, graph_format)
@@ -52,7 +54,6 @@ def vars_from_args(args_var):
         for item in args_var:
             variables[item[0]] = item[1]
     return variables
-
 
 def add_args(parser):
     parser.add_argument("--conf-file", action="store",
@@ -69,6 +70,9 @@ def add_args(parser):
                         help='Save transformation graph and exit')
     parser.add_argument('--format', action='store', required=False,
                         help='Save graph in format. dot/png/svg/...; svg is by default')
+    parser.add_argument('--csvdir', action='store', required=False,
+                        help='Only for svg format. Relative path to existing directory '
+                        'with csv files, to be linked with svg image')
     return parser
 
 
@@ -115,4 +119,5 @@ if __name__ == '__main__':
     getLogger(STDOUT).info('Prepare graph for %s' %
                            [x.name for x in input_files])
 
-    print_graph(args.conf_file, input_files, variables, args.save_graph, args.format)
+    print_graph(args.conf_file, input_files, variables, args.save_graph,
+                args.format, args.csvdir)
