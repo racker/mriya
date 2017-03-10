@@ -240,7 +240,7 @@ class JobController(object):
             if lines:
                 lines = lines - 1
             getLogger(STDOUT).info('EXECUTE: %s %s, lines count=%d',
-                                     opname, objname, len(csv_data))
+                                     opname, objname, lines)
             t_before = time.time()
             if opname == OP_UPDATE and len(csv_data):
                 res = conn.bulk_update(objname, csv_data,

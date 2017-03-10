@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 __author__ = "Yaroslav Litvinov"
-__copyright__ = "Copyright 2016, Rackspace Inc."
+__copyright__ = "Copyright 2016-2017, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
 import argparse
@@ -42,11 +42,11 @@ def print_graph(config_file, job_files, variables, save_graph_file,
         tmp_string = PrettyPrinter(indent=4).pformat(job_syntax.items())
         getLogger(LOG).info('\n'+tmp_string)
         
-    graph_data = create_graph_data(list_of_job_syntax, csvdirpath)
+    graph_data = create_graph_data(list_of_job_syntax, csvdirpath, [])
     if not graph_format:
         graph_format = DEFAULT_GRAPH_FORMAT
     graph = create_displayable_graph(graph_data, graph_format)
-    graph.view(save_graph_file.name)
+    graph.render(save_graph_file.name)
 
 def vars_from_args(args_var):
     variables = {}
