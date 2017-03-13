@@ -26,6 +26,17 @@ EXTERNAL_OBJECT_READ='Read from salesforce object'
 EXTERNAL_OBJECT_WRITE='Write into salesforce object'
 EXTERNAL_OBJECT_RESULT="List of ids as result of operation on Salesforce object"
 
+def get_href_info(item_x, node_name, csvdir, aggregated_csvs):
+    csvhref = ''
+    nodeinfo = ''
+    if CSV_KEY in item_x and csvdir and len(csvdir):
+        csvhref = '%s/%s.csv' % (csvdir, node_name)
+    if LINE_KEY in item_x:
+        if node_name in aggregated_csvs:
+            nodeinfo = 'count=%d;' % aggregated_csvs[node_name]
+    return (csvhref, nodeinfo)
+
+
 def add_item_to_graph(item_x, idx, graph_nodes, csvdir, aggregated_csvs):
     edges = []
     # get csv relations
@@ -45,19 +56,14 @@ def add_item_to_graph(item_x, idx, graph_nodes, csvdir, aggregated_csvs):
     if QUERY_KEY in item_x:
         edges.extend(SqlExecutor.get_query_var_names(item_x[QUERY_KEY]))
 
-    csvhref = ''
-    nodeinfo = ''
-    if CSV_KEY in item_x and csvdir and len(csvdir):
-        csvhref = '%s/%s.csv' % (csvdir, item_x[CSV_KEY])
-    if LINE_KEY in item_x:
-        if aggregated_csvs and len(csvhref):
-            nodeinfo = 'count=%d;' % aggregated_csvs[item_x[CSV_KEY]]
-        nodeinfo += 'query: %s' % item_x[LINE_KEY]
+    csvhref, nodeinfo = ('','')
 
     # var nodes
     if VAR_KEY in item_x:
         node_name = item_x[VAR_KEY]
         color=COLOR_GREEN
+        csvhref, nodeinfo = get_href_info(item_x, node_name, csvdir, aggregated_csvs)
+        nodeinfo += 'query: %s' % item_x[LINE_KEY]
         if PUBLISH_KEY in item_x:
             color=COLOR_RED
         if node_name in graph_nodes:
@@ -73,6 +79,8 @@ def add_item_to_graph(item_x, idx, graph_nodes, csvdir, aggregated_csvs):
     # csv nodes  
     elif CSV_KEY in item_x:
         node_name = item_x[CSV_KEY]
+        csvhref, nodeinfo = get_href_info(item_x, node_name, csvdir, aggregated_csvs)
+        nodeinfo += 'query: %s' % item_x[LINE_KEY]
         if node_name in graph_nodes:
             edges.extend(graph_nodes[node_name].edges)
         graph_nodes[node_name] = GraphNodeData(id=idx, edges=list(Set(edges)),
@@ -101,12 +109,15 @@ def add_item_to_graph(item_x, idx, graph_nodes, csvdir, aggregated_csvs):
             idx = idx + 1
             # add node as result of operation
             node3_name = item_x[NEW_IDS_TABLE]
+            csvhref, nodeinfo = get_href_info(item_x, node3_name, csvdir,
+                                              aggregated_csvs)
+            nodeinfo += EXTERNAL_OBJECT_RESULT
             graph_nodes[node3_name] \
                 = GraphNodeData(id=idx, edges=[node2_name],
                                 shape=SHAPE_ELLIPSE, color='',
                                 style='',
-                                info=EXTERNAL_OBJECT_RESULT,
-                                href='')
+                                info=nodeinfo,
+                                href=csvhref)
             
     idx = idx + 1
     return (idx, graph_nodes)
@@ -170,15 +181,3 @@ def create_displayable_graph(graph_data, graph_format):
                 G.edge(str(graph_data[edge].id), str(v.id))
     return G
 
-def get_csv_files_for_entire_graph(graph_data, graphdir, csvdir):
-    """ Get list of existing csv files """
-    csv_paths = []
-    for nodename in graph_data:
-        candidate_path = os.path.join(graphdir, csvdir, nodename + '.csv')
-        if os.path.isfile(candidate_path):
-            csv_paths.append(candidate_path)
-    return csv_paths
-
-def get_aggregated_csvs(csvs):
-    """ Go through every csv file and get a rows count for each one """
-    

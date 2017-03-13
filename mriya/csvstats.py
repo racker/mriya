@@ -6,13 +6,12 @@ __email__ = "yaroslav.litvinov@rackspace.com"
 
 import glob
 import StringIO
-from os.path import basename, dirname
+from os.path import basename, dirname, isfile, getsize, join
 from mriya.log import defaultlog
 from mriya.opexecutor import Executor
 from mriya.opmultiprocessing import FastQueueProcessor
 from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_controller import JobController
-from mriya.graph import get_csv_files_for_entire_graph
 from mriya.graph import create_graph_data
 from mriya.graph import create_displayable_graph
 from mriya import sql_executor
@@ -59,51 +58,32 @@ def aggregate_all_csvs(config, query_template, csv_files):
             aggregated_csvs[csvname] = count
     return aggregated_csvs
 
-
-def run_mriya_dmt():
-    executor = Executor()
-    cmd = "python mriya_dmt.py --conf-file test-config.ini --src-name 'foo1' --dst-name 'foo2' --job-file tests/test.sql --datadir data"
-    executor.execute('test_dmt', cmd, input_data=None, output_pipe=True)
-    executor.poll_for_complete(None)
-
-def get_stats_for_graph(config, sqlscript, graph_fname, csvdirpath):
+def aggregate_csvs(sqlscripts, csvdirpath):
+    """ Return dictionary like {csv_graph_node_name: count, ...} """
     list_of_job_syntax = []
     query_template = "SELECT count() FROM csv.%s => var:COUNT"
-    graphdir = dirname(graph_fname)
-    with open(sqlscript) as job_file:
-        jobs_dir = 'tests'
-        macro_files = {}
-        for macro_filename in glob.glob('%s/macro_*.sql' % jobs_dir):
-            with open(macro_filename) as macro_file:
-                macro_name = basename(macro_filename).split('.')[0]
-                macro_files[macro_name] = macro_file.readlines()
-        # main script data
-        job_syntax = JobSyntaxExtended(job_file.readlines(),
+    for sqlscript in sqlscripts:
+        with open(sqlscript) as job_file:
+            jobs_dir = dirname(sqlscript)
+            macro_files = {}
+            for macro_filename in glob.glob('%s/macro_*.sql' % jobs_dir):
+                with open(macro_filename) as macro_file:
+                    macro_name = basename(macro_filename).split('.')[0]
+                    macro_files[macro_name] = macro_file.readlines()
+            # main script data
+            job_syntax = JobSyntaxExtended(job_file.readlines(),
                                        macro_files)
         list_of_job_syntax.append(job_syntax)
-    # phase1: create graph just to get a list of csv nodes
+    # create graph just to get a list of csv nodes
     graph_data = create_graph_data(list_of_job_syntax, csvdirpath, [])
-    csv_files = get_csv_files_for_entire_graph(graph_data,
-                                               graphdir, csvdirpath)
-    return aggregate_all_csvs(config, query_template, csv_files)
+    csv_files = get_csv_files_for_entire_graph(graph_data, csvdirpath)
+    return aggregate_all_csvs(None, query_template, csv_files)
 
-def update_graph_stats():
-    #create new graph with statistics
-    graph_data = create_graph_data(list_of_job_syntax, csvdirpath, graph_stats)
-    if not graph_format:
-        graph_format = DEFAULT_GRAPH_FORMAT
-    graph = create_displayable_graph(graph_data, graph_format)
-    graph.render(save_graph_file.name)
-
-
-    
-def test_graph():
-    run_mriya_dmt()
-    get_stats_for_graph(config='test-config.ini',
-                        sqlscript='tests/test.sql',
-                        graph_fname='./tests/test_graph',
-                        csvdirpath='../data')
-
-if __name__ == '__main__':
-    defaultlog()
-    test_graph()
+def get_csv_files_for_entire_graph(graph_data, csvdatapath):
+    """ Get list of existing csv files """
+    csv_paths = []
+    for nodename in graph_data:
+        candidate_path = join(csvdatapath, nodename + '.csv')
+        if isfile(candidate_path) and getsize(candidate_path) > 0:
+            csv_paths.append(candidate_path)
+    return csv_paths

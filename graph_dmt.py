@@ -17,6 +17,7 @@ from mriya.job_controller import JobController
 from mriya.log import loginit, STDOUT, STDERR, LOG
 from mriya.graph import create_graph_data
 from mriya.graph import create_displayable_graph
+from mriya.csvstats import aggregate_csvs
 from mriya.config import *
 
 DEFAULT_GRAPH_FORMAT = 'svg'
@@ -25,7 +26,9 @@ DEFAULT_CSV_FOLDER_TO_ATTACH_TO_SVG = 'data'
 def print_graph(config_file, job_files, variables, save_graph_file,
                 graph_format, csvdirpath):
     list_of_job_syntax = []
+    sqlscripts = []
     for job_file in job_files:
+        sqlscripts.append(job_file.name)
         jobs_dir = os.path.dirname(job_file.name)
         macro_files = {}
         for macro_filename in glob.glob('%s/macro_*.sql' % jobs_dir):
@@ -41,8 +44,11 @@ def print_graph(config_file, job_files, variables, save_graph_file,
         from pprint import PrettyPrinter
         tmp_string = PrettyPrinter(indent=4).pformat(job_syntax.items())
         getLogger(LOG).info('\n'+tmp_string)
-        
-    graph_data = create_graph_data(list_of_job_syntax, csvdirpath, [])
+
+    csvdirpath = os.path.join(os.path.dirname(save_graph_file.name), csvdirpath)
+    aggregated_csvs = aggregate_csvs(sqlscripts, csvdirpath)
+    graph_data = create_graph_data(list_of_job_syntax, csvdirpath,
+                                   aggregated_csvs)
     if not graph_format:
         graph_format = DEFAULT_GRAPH_FORMAT
     graph = create_displayable_graph(graph_data, graph_format)
@@ -110,7 +116,6 @@ if __name__ == '__main__':
     except OSError, e:
         if e.errno != errno.EEXIST:
             raise
-    
 
     loginit(STDOUT)
     loginit(STDERR)

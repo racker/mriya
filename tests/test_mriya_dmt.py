@@ -44,7 +44,7 @@ def test_dmt():
 
 def test_graph():
     executor = Executor()
-    cmd = "python graph_dmt.py --conf-file test-config.ini --job-file tests/test.sql --save-graph tests/test_graph --csvdir ../data"
+    cmd = "python graph_dmt.py --conf-file test-config.ini --job-file tests/test.sql --job-file tests/test2.sql --save-graph tests/test_graph --csvdir ../data"
     executor.execute('test_graph', cmd, input_data=None, output_pipe=True)
     res = executor.poll_for_complete(observer)
     print res
