@@ -53,8 +53,6 @@ def aggregate_all_csvs(config, query_template, csv_files):
         if res:
             csvname = res.keys()[0]
             count = int(res[csvname])
-            if count > 0:
-                count = count -1
             aggregated_csvs[csvname] = count
     return aggregated_csvs
 

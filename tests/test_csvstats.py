@@ -29,9 +29,9 @@ def test_graph():
     csvdirpath = join(dirname(graph_fname), csvdir)
     res = aggregate_csvs(sqlscripts=SQL_SCRIPTS,
                          csvdirpath=csvdirpath)
-    assert res['aggregation_test'] == 10000
-    assert res['aggregation_test2'] == 10000    
-    assert res['test_fields_table'] == 0
+    assert res['aggregation_test'] == 10001
+    assert res['aggregation_test2'] == 10001
+    assert res['test_fields_table'] == 1
 
 if __name__ == '__main__':
     defaultlog()
