@@ -48,9 +48,11 @@ class JobController(object):
     def __init__(self, config_filename, endpoint_names,
                  job_syntax, variables, debug_steps):
         #loginit(__name__)
-        self.config_file = open(config_filename)
-        self.config = ConfigParser()
-        self.config.read_file(self.config_file)
+        self.config = None
+        if config_filename:
+            self.config_file = open(config_filename)
+            self.config = ConfigParser()
+            self.config.read_file(self.config_file)
         self.job_syntax = job_syntax
         self.endpoints = Endpoints(self.config, endpoint_names)
         self.variables = variables
@@ -236,11 +238,8 @@ class JobController(object):
             objname = job_syntax_item[endpoint]
             conn = self.endpoints.endpoint(endpoint)
             max_batch_size = int(job_syntax_item[BATCH_SIZE_KEY])
-            lines = len(csv_data)
-            if lines:
-                lines = lines - 1
             getLogger(STDOUT).info('EXECUTE: %s %s, lines count=%d',
-                                     opname, objname, len(csv_data))
+                                     opname, objname, num_lines-1)
             t_before = time.time()
             if opname == OP_UPDATE and len(csv_data):
                 res = conn.bulk_update(objname, csv_data,

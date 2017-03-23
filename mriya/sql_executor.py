@@ -51,7 +51,6 @@ class SqlExecutor(object):
             getLogger(LOG).info('Saved csv: %s, size: %d',
                                    self.csv_name(name),
                                    self.csv_size(name))
-            getLogger(STDOUT).info('.')
 
     @staticmethod
     def get_query_var_names(query):

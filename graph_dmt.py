@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 __author__ = "Yaroslav Litvinov"
-__copyright__ = "Copyright 2016, Rackspace Inc."
+__copyright__ = "Copyright 2016-2017, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
 import argparse
@@ -17,13 +17,18 @@ from mriya.job_controller import JobController
 from mriya.log import loginit, STDOUT, STDERR, LOG
 from mriya.graph import create_graph_data
 from mriya.graph import create_displayable_graph
+from mriya.csvstats import aggregate_csvs
 from mriya.config import *
 
 DEFAULT_GRAPH_FORMAT = 'svg'
+DEFAULT_CSV_FOLDER_TO_ATTACH_TO_SVG = 'data'
 
-def print_graph(config_file, job_files, variables, save_graph_file, graph_format):
+def print_graph(config_file, job_files, variables, save_graph_file,
+                graph_format, csvdirpath):
     list_of_job_syntax = []
+    sqlscripts = []
     for job_file in job_files:
+        sqlscripts.append(job_file.name)
         jobs_dir = os.path.dirname(job_file.name)
         macro_files = {}
         for macro_filename in glob.glob('%s/macro_*.sql' % jobs_dir):
@@ -39,12 +44,17 @@ def print_graph(config_file, job_files, variables, save_graph_file, graph_format
         from pprint import PrettyPrinter
         tmp_string = PrettyPrinter(indent=4).pformat(job_syntax.items())
         getLogger(LOG).info('\n'+tmp_string)
-        
-    graph_data = create_graph_data(list_of_job_syntax)
+
+    aggregated_csvs = {}
+    if csvdirpath:
+        abscsvdirpath = os.path.join(os.path.dirname(save_graph_file.name), csvdirpath)
+        aggregated_csvs = aggregate_csvs(sqlscripts, abscsvdirpath)
+    graph_data = create_graph_data(list_of_job_syntax, csvdirpath,
+                                   aggregated_csvs)
     if not graph_format:
         graph_format = DEFAULT_GRAPH_FORMAT
     graph = create_displayable_graph(graph_data, graph_format)
-    graph.view(save_graph_file.name)
+    graph.render(save_graph_file.name)
 
 def vars_from_args(args_var):
     variables = {}
@@ -52,7 +62,6 @@ def vars_from_args(args_var):
         for item in args_var:
             variables[item[0]] = item[1]
     return variables
-
 
 def add_args(parser):
     parser.add_argument("--conf-file", action="store",
@@ -69,6 +78,9 @@ def add_args(parser):
                         help='Save transformation graph and exit')
     parser.add_argument('--format', action='store', required=False,
                         help='Save graph in format. dot/png/svg/...; svg is by default')
+    parser.add_argument('--csvdir', action='store', required=False,
+                        help='Only for svg format. Relative path to existing directory '
+                        'with csv files, to be linked with svg image')
     return parser
 
 
@@ -106,7 +118,6 @@ if __name__ == '__main__':
     except OSError, e:
         if e.errno != errno.EEXIST:
             raise
-    
 
     loginit(STDOUT)
     loginit(STDERR)
@@ -115,4 +126,5 @@ if __name__ == '__main__':
     getLogger(STDOUT).info('Prepare graph for %s' %
                            [x.name for x in input_files])
 
-    print_graph(args.conf_file, input_files, variables, args.save_graph, args.format)
+    print_graph(args.conf_file, input_files, variables, args.save_graph,
+                args.format, args.csvdir)

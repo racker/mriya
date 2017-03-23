@@ -43,8 +43,12 @@ class JobSyntaxExtended(JobSyntax):
                 replaces = {}
                 if REPLACE_KEY in item:
                     replaces = item[REPLACE_KEY]
+                try:
+                    macro = macroses[macro_name]
+                except:
+                    raise Exception("Could not locate macro: %s.sql" % macro_name)
                 macro_lines = JobSyntaxExtended.replace_in_lines(
-                    macroses[macro_name], replaces)
+                    macro, replaces)
                 upd = JobSyntaxExtended.load_all_macro_recursively(
                     macro_lines, macroses)
                 macro_lines = JobSyntaxExtended.replace_in_lines(

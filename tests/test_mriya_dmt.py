@@ -7,7 +7,6 @@ __email__ = "yaroslav.litvinov@rackspace.com"
 import logging
 import os
 from pprint import PrettyPrinter
-from StringIO import StringIO
 from random import randint
 from configparser import ConfigParser
 from mriya import bulk_data
@@ -29,6 +28,8 @@ def observer(refname, retcode, stdout):
     if refname == 'test_dmt':
         assert retcode == 0 
         assert stdout.readlines()[-1] == res
+    elif refname == 'test_graph':
+        assert retcode == 0
     elif refname == 'test_dmt_bad_param':
         assert retcode == 1
     else:
@@ -36,10 +37,18 @@ def observer(refname, retcode, stdout):
 
 def test_dmt():
     executor = Executor()
-    cmd = "python mriya_dmt.py --conf-file test-config.ini --src-name 'foo1' --dst-name 'foo2' --job-file tests/test.sql"
+    cmd = "python mriya_dmt.py --conf-file test-config.ini --src-name 'foo1' --dst-name 'foo2' --job-file tests/test.sql --datadir data"
     executor.execute('test_dmt', cmd, input_data=None, output_pipe=True)
-    executor.poll_for_complete(observer)
+    res = executor.poll_for_complete(observer)
+    print res
 
+def test_graph():
+    executor = Executor()
+    cmd = "python graph_dmt.py --conf-file test-config.ini --job-file tests/test.sql --job-file tests/test2.sql --save-graph tests/test_graph --csvdir ../data"
+    executor.execute('test_graph', cmd, input_data=None, output_pipe=True)
+    res = executor.poll_for_complete(observer)
+    print res
+    
 def test_dmt_bad_param():
     executor = Executor(silent_exit=True)
     cmd = "python mriya_dmt.py --conf-file test-config.ini --src-name 'foo1' --dst-name 'foo2'"

@@ -117,9 +117,11 @@ class SqliteExecutor(SqlExecutor):
         res = executor.poll_for_complete(observer)
         del executor
         t_after = time.time()
-        getLogger(LOG).info('Csv Took time: %.2f' % (t_after-t_before))
+        csvname = ''
         if CSV_KEY in self.job_syntax_item:
-            self.fix_empty_res_table(self.job_syntax_item[CSV_KEY])
+            csvname = self.job_syntax_item[CSV_KEY]
+            self.fix_empty_res_table(csvname)
+        getLogger(STDOUT).info('%s - %.2fs' % (csvname, t_after-t_before))
         res = res['refname']
         if res[0] != 0:
             raise Exception("Sqlite query error", self.get_query())

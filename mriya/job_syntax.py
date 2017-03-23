@@ -211,15 +211,16 @@ class JobSyntax(object):
             objname_val = key_vals[2]
             values[OP_KEY] = val
             values[key] = objname_val
-            if (val == OP_INSERT or val == OP_UPSERT or \
-                val == OP_DELETE or val == OP_UPDATE):
-                if len(key_vals) >= 5:
-                    values[BATCH_SIZE_KEY] = key_vals[3]
-                    values[NEW_IDS_TABLE] = key_vals[4]
-                else:
-                    getLogger(LOG).info("%d,%s", len(key_vals), pair)
-                    getLogger(STDOUT).error("Batch parameters required")
-                    assert(0)
+            if len(key_vals) >= 5:
+                values[BATCH_SIZE_KEY] = key_vals[3]
+                values[NEW_IDS_TABLE] = key_vals[4]
+            else:
+                getLogger(LOG).info("%d,%s", len(key_vals), pair)
+                getLogger(STDOUT).error("Batch parameters required")
+                assert(0)
+            if not (val == OP_INSERT or val == OP_UPSERT or \
+                    val == OP_DELETE or val == OP_UPDATE):
+                getLogger(STDOUT).error("Bad operation %s" %val)
         elif key == BATCH_BEGIN_KEY:
             val2 = key_vals[2]
             values[key] = (val, val2)
