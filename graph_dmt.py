@@ -45,8 +45,10 @@ def print_graph(config_file, job_files, variables, save_graph_file,
         tmp_string = PrettyPrinter(indent=4).pformat(job_syntax.items())
         getLogger(LOG).info('\n'+tmp_string)
 
-    csvdirpath = os.path.join(os.path.dirname(save_graph_file.name), csvdirpath)
-    aggregated_csvs = aggregate_csvs(sqlscripts, csvdirpath)
+    aggregated_csvs = {}
+    if csvdirpath:
+        abscsvdirpath = os.path.join(os.path.dirname(save_graph_file.name), csvdirpath)
+        aggregated_csvs = aggregate_csvs(sqlscripts, abscsvdirpath)
     graph_data = create_graph_data(list_of_job_syntax, csvdirpath,
                                    aggregated_csvs)
     if not graph_format:
