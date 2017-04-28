@@ -263,11 +263,11 @@ class Bulk(sf):
                 except SocketError as e:
                     if e.errno != errno.ECONNRESET:
                         raise # Not error we are looking for
-                # send request again
-                resp = self._bulkHttp(
-                    self.__join((self.JOB, self.runningJobId, self.BATCH,
-                                 batchId, self.RESULT, resultid)),
-                    None, self.__content_csv, 'GET')
+                    # send request again
+                    resp = self._bulkHttp(
+                        self.__join((self.JOB, self.runningJobId, self.BATCH,
+                                     batchId, self.RESULT, resultid)),
+                        None, self.__content_csv, 'GET')
 
                 result_chunk = resp.split('\n')
                 # get rid of last empty line
