@@ -62,7 +62,8 @@ def parseXMLResult(raw_xml):
                 if not retval:
                     retval = keyval
                 elif key in retval.keys():
-                    duplicate_key = '%s-%d' % (key, len(retval) + 1)
+                    number = len(retval) + 1
+                    duplicate_key = '%s-%s' % (key, str(number).zfill(3))
                     retval[duplicate_key] = keyval[key]
                 else:
                     retval.update(keyval)

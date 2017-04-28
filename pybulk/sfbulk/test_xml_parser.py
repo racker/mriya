@@ -20,7 +20,7 @@ def test_many_results():
     raw_xml = '<result-list xmlns="http://www.force.com/2009/06/asyncapi/dataload"><result>75261000003W0MS</result><result>75261000003W0Mc</result></result-list>'
     res = parseXMLResult(raw_xml)
     assert res == {u'result': u'75261000003W0MS',
-                   u'result-2': u'75261000003W0Mc'}
+                   u'result-002': u'75261000003W0Mc'}
 
 def test_big():
     raw_xml = '<batchInfo>\n\
