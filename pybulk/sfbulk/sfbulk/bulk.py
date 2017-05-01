@@ -281,6 +281,8 @@ class Bulk(sf):
             # add trailing empty line to mimic standard behaviour
             if results:
                 results.append('')
+        else:
+            results = resp.split('\n')                
         
         #TODO: improve parsing response
         if only_invalid:
