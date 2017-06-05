@@ -52,9 +52,21 @@ def parseXMLResult(raw_xml):
     parse_resp = xml.dom.minidom.parseString(raw_xml)
     Root = parse_resp.documentElement
 
+    # items having same key are supported here
     for child in Root.childNodes:
         if child.nodeType == ELEMENT_NODE:
-            retval = _parseElement(child.childNodes, retval)
+            keyval = {}
+            keyval = _parseElement(child.childNodes, keyval)
+            if keyval:
+                key = keyval.keys()[0]
+                if not retval:
+                    retval = keyval
+                elif key in retval.keys():
+                    number = len(retval) + 1
+                    duplicate_key = '%s-%s' % (key, str(number).zfill(3))
+                    retval[duplicate_key] = keyval[key]
+                else:
+                    retval.update(keyval)
     return retval
 
 

@@ -19,7 +19,8 @@ along with sfbulk.  If not, see <http://www.gnu.org/licenses/>.
 """
 import logging
 import time
-
+import errno
+from socket import error as SocketError
 
 from sfbulk.callout import Callout
 from sfbulk.exceptions import BulkException
@@ -244,19 +245,45 @@ class Bulk(sf):
         @type: string
         @param batchId: batch id
         """
+        results = []
         resp = self._bulkHttp(
             self.__join((self.JOB, self.runningJobId, self.BATCH,
                         batchId, self.RESULT)),
             None, self.__content_csv, 'GET')
 
         if jobinfo.operation == 'query':
-            results = parseXMLResult(resp)
-            resp = self._bulkHttp(
-                self.__join((self.JOB, self.runningJobId, self.BATCH,
-                            batchId, self.RESULT, results.get('result', ''))),
-                None, self.__content_csv, 'GET')
+            result_ids = parseXMLResult(resp)
+            for chunk_name in sorted(result_ids.keys()):
+                resultid = result_ids[chunk_name]
+                try:
+                    resp = self._bulkHttp(
+                        self.__join((self.JOB, self.runningJobId, self.BATCH,
+                                    batchId, self.RESULT, resultid)),
+                        None, self.__content_csv, 'GET')
+                except SocketError as e:
+                    if e.errno != errno.ECONNRESET:
+                        raise # Not error we are looking for
+                    # send request again
+                    resp = self._bulkHttp(
+                        self.__join((self.JOB, self.runningJobId, self.BATCH,
+                                     batchId, self.RESULT, resultid)),
+                        None, self.__content_csv, 'GET')
 
-        results = resp.split('\n')
+                result_chunk = resp.split('\n')
+                # get rid of last empty line
+                if result_chunk and result_chunk[-1] == '':
+                    result_chunk = result_chunk[:-1]
+                if not results:
+                    results = result_chunk
+                elif result_chunk:
+                    # for other chunks header will not be added
+                    results.extend(result_chunk[1:])
+            # add trailing empty line to mimic standard behaviour
+            if results:
+                results.append('')
+        else:
+            results = resp.split('\n')                
+        
         #TODO: improve parsing response
         if only_invalid:
             invalid_results = []

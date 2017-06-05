@@ -57,7 +57,6 @@ class JobController(object):
         self.endpoints = Endpoints(self.config, endpoint_names)
         self.variables = variables
         self.debug_steps = debug_steps
-        self.external_exec = Executor()
         # create csv file for an internal batch purpose
         ints1000_csv = SqlExecutor.csv_name(INTS_TABLE)
         with open(ints1000_csv, 'w') as ints:
@@ -67,7 +66,6 @@ class JobController(object):
 
     def __del__(self):
         del self.endpoints
-        del self.external_exec
 
     def create_executor(self, job_syntax_item):
         sql_exec = None
@@ -169,14 +167,8 @@ class JobController(object):
                 if type(val) is not list:
                     external_vars[key] = val
             #run batches sequentially
-            #self.external_exec.wait_for_complete()
-            if 0:
-                self.run_external_batch(param, self.config_file,
-                                        batch_syntax_items, external_vars)
-            else:
-                self.run_internal_batch(param, self.config_file,
-                                        batch_syntax_items, external_vars)
-        #res = self.external_exec.wait_for_complete()
+            self.run_internal_batch(param, self.config_file,
+                                    batch_syntax_items, external_vars)
 
     def run_internal_batch(self, _, config_filename,
                            job_syntax_items, variables):
@@ -187,22 +179,6 @@ class JobController(object):
                                   self.debug_steps)
         batch_job.run_job()
         del batch_job
-
-    def run_external_batch(self, batch_param, config_file,
-                           job_syntax_items, variables):
-        text_vars = ''
-        for key, val in variables.iteritems():
-            text_vars += ' --var %s %s' % (key, val)
-        cmd_fmt = 'python mriya_dmt.py --conf-file {conf_file} \
---job-stdin --src-name "{src}" --dst-name "{dst}" {variables}'
-        cmd = cmd_fmt.format(conf_file=config_file.name,
-                             src=self.endpoints.endpoint_names['src'],
-                             dst=self.endpoints.endpoint_names['dst'],
-                             variables=text_vars)
-        input_data = self.batch_input_text_data(job_syntax_items)
-        getLogger(LOG).info('Invoke cmd:%s', cmd)
-        self.external_exec.execute('batch_%s' % batch_param, cmd,
-                                   input_data=input_data)
 
     def batch_input_text_data(self, job_syntax_items):
         res = ''

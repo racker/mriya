@@ -121,7 +121,7 @@ class SqliteExecutor(SqlExecutor):
         if CSV_KEY in self.job_syntax_item:
             csvname = self.job_syntax_item[CSV_KEY]
             self.fix_empty_res_table(csvname)
-        getLogger(STDOUT).info('%s - %.2fs' % (csvname, t_after-t_before))
+            getLogger(STDOUT).info('%s.csv - %.2fs' % (csvname, t_after-t_before))
         res = res['refname']
         if res[0] != 0:
             raise Exception("Sqlite query error", self.get_query())
