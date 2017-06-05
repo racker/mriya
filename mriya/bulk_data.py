@@ -37,7 +37,8 @@ def get_stream_from_csv_rows_list(csv_rows_list):
     # put data into stream for handling
     for csv_row in csv_rows_list:
         istream.write(csv_row)
-        istream.write('\n')
+        if len(csv_row) and csv_row[-1] != '\n':
+            istream.write('\n')
     istream.seek(0)
     return istream
 
@@ -63,6 +64,7 @@ def get_bulk_data_from_csv_stream(istream):
     rows = []
     while True:
         rec_tuple = csv_reader.read_record()
+        print "rec_tuple", rec_tuple
         if not rec_tuple:
             break
         if not fields:

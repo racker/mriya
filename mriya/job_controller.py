@@ -19,6 +19,7 @@ from mriya.salesforce_executor import SalesforceExecutor
 from mriya.data_connector import create_bulk_connector
 from mriya.bulk_data import csv_from_bulk_data, parse_batch_res_data
 from mriya.job_syntax_extended import JobSyntaxExtended, BATCH_KEY
+from mriya.sf_merge import SoapMerge
 from mriya.config import *
 
 INTS_TABLE = 'ints10000'
@@ -187,6 +188,12 @@ class JobController(object):
                 res += item[LINE_KEY] + '\n'
         return res
 
+    def csvdata(self, filename):
+        csv_data = None
+        with open(filename) as csv_f:
+            csv_data = csv_f.readlines()
+        return csv_data
+        
     def handle_transmitter_op(self, job_syntax_item, endpoint):
         opname = job_syntax_item[OP_KEY]
         # run batches sequentially / parallel
@@ -199,11 +206,8 @@ class JobController(object):
                 raise Exception('Unknown batch type: %s', job_syntax_item[BATCH_TYPE_KEY])
         else:
             batch_seq = False # parallel by default
-        csv_data = None
         csv_filename = SqlExecutor.csv_name(job_syntax_item[CSV_KEY])
-        with open(csv_filename) as csv_f:
-            i = 0
-            csv_data = csv_f.readlines()
+        csv_data = self.csvdata(csv_filename)
         num_lines = len(csv_data)
         # do nothing for empty data set
         if num_lines <= 1:
@@ -217,18 +221,22 @@ class JobController(object):
             getLogger(STDOUT).info('EXECUTE: %s %s, lines count=%d',
                                      opname, objname, num_lines-1)
             t_before = time.time()
-            if opname == OP_UPDATE and len(csv_data):
-                res = conn.bulk_update(objname, csv_data,
-                                       max_batch_size, batch_seq)
+            if len(csv_data):
+                if opname == OP_UPDATE:
+                    res = conn.bulk_update(objname, csv_data,
+                                           max_batch_size, batch_seq)
+                elif opname == OP_DELETE:
+                    res = conn.bulk_delete(objname, csv_data,
+                                           max_batch_size, batch_seq)
+                elif opname == OP_INSERT:
+                    res = conn.bulk_insert(objname, csv_data,
+                                           max_batch_size, batch_seq)
+                elif opname == OP_MERGE:
+                    res = conn.soap_merge(objname, csv_data)
+                else:
+                    assert 0
                 result_ids = parse_batch_res_data(res)
-            if opname == OP_DELETE and len(csv_data):
-                res = conn.bulk_delete(objname, csv_data,
-                                       max_batch_size, batch_seq)
-                result_ids = parse_batch_res_data(res)
-            elif opname == OP_INSERT and len(csv_data):
-                res = conn.bulk_insert(objname, csv_data,
-                                       max_batch_size, batch_seq)
-                result_ids = parse_batch_res_data(res)
+               
             t_after = time.time()
             getLogger(STDOUT).info('SF %s Took time: %.2f' \
                                    % (opname, t_after-t_before))
@@ -255,7 +263,8 @@ class JobController(object):
             if opname == OP_UPSERT or \
                opname == OP_INSERT or \
                opname == OP_DELETE or \
-               opname == OP_UPDATE:
+               opname == OP_UPDATE or \
+               opname == OP_MERGE:
                 self.handle_transmitter_op(job_syntax_item, endpoint)
             else:
                 getLogger(STDOUT).error('Unsupported operation: %s',

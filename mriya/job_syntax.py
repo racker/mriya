@@ -29,6 +29,7 @@ OP_INSERT = 'insert'
 OP_UPSERT = 'upsert'
 OP_UPDATE = 'update'
 OP_DELETE = 'delete'
+OP_MERGE = 'merge'
 BATCH_TYPE_KEY = 'type'
 BATCH_TYPE_PARALLEL_KEY = 'parallel' #by default
 BATCH_TYPE_SEQUENTIAL_KEY = 'sequential'
@@ -219,7 +220,8 @@ class JobSyntax(object):
                 getLogger(STDOUT).error("Batch parameters required")
                 assert(0)
             if not (val == OP_INSERT or val == OP_UPSERT or \
-                    val == OP_DELETE or val == OP_UPDATE):
+                    val == OP_DELETE or val == OP_UPDATE or \
+                    val == OP_MERGE):
                 getLogger(STDOUT).error("Bad operation %s" %val)
         elif key == BATCH_BEGIN_KEY:
             val2 = key_vals[2]
@@ -229,7 +231,8 @@ class JobSyntax(object):
         elif key == MACRO_KEY:
             values[key] = val
             # count of rest params must be even
-            assert not len(key_vals) % 2
+            if len(key_vals) % 2:
+                raise Exception("Macro params delimeter ':' is missing. params: %s" % str(pair))
             it = iter(key_vals[2:])
             for key, val in izip(it, it):
                 if REPLACE_KEY not in values:

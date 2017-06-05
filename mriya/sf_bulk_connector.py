@@ -3,12 +3,15 @@ __author__ = "Yaroslav Litvinov"
 __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
+from StringIO import StringIO
 from mriya import bulk_data
 from sfbulk import Bulk
 from logging import getLogger
 from time import sleep
 from mriya.base_connector import BaseBulkConnector
 from mriya.log import loginit, STDERR, STDOUT, LOG
+from mriya.sf_merge import SoapMerge
+from mriya.bulk_data import get_stream_from_csv_rows_list, get_bulk_data_from_csv_stream
 
 class SfBulkConnector(BaseBulkConnector):
 
@@ -209,3 +212,17 @@ class SfBulkConnector(BaseBulkConnector):
         res = self.bulk_common('query', objname, soql, None, None)
         return res
 
+    def soap_merge(self, objname, csv_data):
+        print "csv_data", csv_data
+        istream = get_stream_from_csv_rows_list(csv_data)
+        bulk_data = get_bulk_data_from_csv_stream(istream)
+        print "bulk_data", bulk_data
+
+        merger = SoapMerge(self.instance_url, self.bulk.sessionid)
+        merge_data = {}
+        if merge_data:
+            res = merger.merge(objname, merge_data)
+        else:
+            res = ['"Id","Success","Created","Error"\n']
+        return res
+      
