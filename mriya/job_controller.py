@@ -235,6 +235,7 @@ class JobController(object):
                     res = conn.soap_merge(objname, csv_data)
                 else:
                     assert 0
+
                 result_ids = parse_batch_res_data(res)
                
             t_after = time.time()

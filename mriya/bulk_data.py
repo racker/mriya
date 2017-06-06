@@ -64,7 +64,6 @@ def get_bulk_data_from_csv_stream(istream):
     rows = []
     while True:
         rec_tuple = csv_reader.read_record()
-        print "rec_tuple", rec_tuple
         if not rec_tuple:
             break
         if not fields:

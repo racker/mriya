@@ -19,7 +19,6 @@ along with sfbulk.  If not, see <http://www.gnu.org/licenses/>.
 """
 import requests
 
-from sfbulk.exceptions import BulkException
 from sfbulk.utils_xml import parseXMLResult
 
 
@@ -28,20 +27,20 @@ from sfbulk.utils_xml import parseXMLResult
 MERGE_SOAP_REQUEST_HEADERS = {
     u'content-type': 'text/xml',
     u'charset': 'UTF-8',
-    u'SOAPAction': ''
+    u'SOAPAction': 'merge'
 }
 
 #params: sessionid, mergerequest
 # see MERGE_REQUEST_BODY_PART for mergerequest
 MERGE_SOAP_REQUEST_BODY = u"""<?xml version="1.0" encoding="utf-8" ?>
 <soapenv:Envelope 
-    xmlns:soapenv="<a rel="nofollow" class="external free" href="http://schemas.xmlsoap.org/soap/envelope/">http://schemas.xmlsoap.org/soap/envelope/</a>"
+    xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
     xmlns:urn="urn:enterprise.soap.sforce.com"
     xmlns:urn1="sobject.enterprise.soap.sforce.com"
-    xmlns:xsi="<a rel="nofollow" class="external free" href="http://www.w3.org/2001/XMLSchema-instance">http://www.w3.org/2001/XMLSchema-instance</a>">
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <soapenv:Header>
         <urn:SessionHeader>
-            <urn:sessionId><b>{sessionid}</b></urn:sessionId>
+            <urn:sessionId>{sessionid}</urn:sessionId>
          </urn:SessionHeader>
     </soapenv:Header>
     <soapenv:Body>
@@ -54,29 +53,43 @@ MERGE_SOAP_REQUEST_BODY = u"""<?xml version="1.0" encoding="utf-8" ?>
 
 #params: objname, masterid, mergeidslist
 # see MERGE_IDS_LIST_BODY_PART for mergeidslist
-MERGE_REQUEST_BODY_PART = u"""
-            <urn:request>
-                <urn:masterRecord xsi:type="urn1:<b>{objname}</b>">
-                    <urn1:Id><b>{masterid}</b></urn1:Id>
-                        <Description><b>Merged with Dupe {objname}.</b></Description>
+MERGE_REQUEST_BODY_PART = u"""            <urn:request>
+                <urn:masterRecord xsi:type="urn1:{objname}">
+                    <urn1:Id>{masterid}</urn1:Id>
                 </urn:masterRecord>
-                <urn:recordToMergeIds>
                     {mergeidslist}
-                </urn:recordToMergeIds>
             </urn:request>"""
 
 # params: mergeid
-MERGE_IDS_LIST_BODY_PART = u"""<b>{mergeid}</b>"""
+MERGE_IDS_LIST_BODY_PART = u"<urn:recordToMergeIds>{mergeid}</urn:recordToMergeIds>"
+
+class SoapException(Exception):
+
+    default_detail = u'Soap Exception'
+
+    def __init__(self, detail=u''):
+        """
+        Soap Exception class.
+        """
+        super(SoapException, self).__init__()
+        if detail:
+            self.detail = detail
+
+    def get_detail(self):
+        return self.detail or self.default_detail
+
+    def __str__(self):
+        return self.get_detail()
+
 
 class SoapMerge(object):
     """Standard enterprise objects merge"""
 
     # SOAP CONSTANS
 
-    SOAP_URL = u'https://{instance_url}/services/Soap/c/{sf_version}'
-    DOMAIN = u''
+    SOAP_URL = u'{instance_url}/services/Soap/c/{sf_version}'
 
-    def __init__(self, instance_url, sessionid, version='37.0'):
+    def __init__(self, instance_url, sessionid, version='10.0'):
         """
         @instance_url - hostname
         @sessionid - Id of authenticated session, must be taken from bulk transaport"""
@@ -84,6 +97,7 @@ class SoapMerge(object):
         self.sessionid = sessionid
         self.soap_url = \
             self.SOAP_URL.format(instance_url=instance_url, sf_version=version)
+        print "soap_url", self.soap_url
     
     def merge(self, objname, merge_dict):
         """
@@ -93,9 +107,9 @@ class SoapMerge(object):
 
         # prepare request body
         mergerequest = ''
-        for masterid, mergeids in merge_dict.iteritems():
+        for masterid, mergeidsl in merge_dict.iteritems():
             mergeids = ''
-            for mergeid in mergeids:
+            for mergeid in mergeidsl:
                 mergeids += MERGE_IDS_LIST_BODY_PART.format(mergeid=mergeid)
             mergerequest += MERGE_REQUEST_BODY_PART.format(
                 objname=objname, masterid=masterid, mergeidslist=mergeids)
@@ -104,7 +118,6 @@ class SoapMerge(object):
             sessionid=self.sessionid,
             mergerequest=mergerequest)
 
-        print merge_soap_request_body
         response = self._send_merge_request(self.soap_url, merge_soap_request_body)
         self._check_response(response)
         return self._get_result(response)
@@ -122,9 +135,14 @@ class SoapMerge(object):
         
     @staticmethod
     def _check_response(response):
+        dict_result = parseXMLResult(response.content)
+        print dict_result
+        # handle #1 {u'mergedRecordIds': u'0016100000TkTQqAAN', u'id': u'0016100000RsjBbAAJ', u'success': u'true', u'updatedRelatedIds': u'1CA61000001NHFbGAO'}
+        # handle #2 {u'message': u'entity is deleted', u'id': u'0016100000Tl3MFAAZ', u'success': u'false', u'statusCode': u'ENTITY_IS_DELETED'}
+        # handle #3 {u'message': u'This Company has Accounts associated with it, and cannot be deleted. Please contact a Salesforce Administrator for assistance.', u'id': u'0016100000Tkx6AAAR', u'success': u'false', u'statusCode': u'DELETE_FAILED'}
         if response.status_code != 200:
-            dict_result = parseXMLResult(response.content)
-            except_msg = dict_result['sf:exceptionMessage']
-            except_code = dict_result['sf:exceptionCode']
-            raise BulkException('{message}: {code}'.format(
-                message=except_msg, code=except_code))
+            fault_string = dict_result['faultstring']
+            fault_code = dict_result['faultcode']
+            raise SoapException('{message}: {code}'.format(
+                message=fault_string, code=fault_code))
+
