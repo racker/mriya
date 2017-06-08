@@ -19,10 +19,12 @@ along with sfbulk.  If not, see <http://www.gnu.org/licenses/>.
 """
 import requests
 
-from sfbulk.utils_xml import parseXMLResult
+from sfbulk.utils_xml import parseXMLResult, parseXMLResultList
 
 
 # XML CONSTANS
+
+RESPONSE_LIST_NAME = 'mergeResponse'
 
 MERGE_SOAP_REQUEST_HEADERS = {
     u'content-type': 'text/xml',
@@ -97,8 +99,7 @@ class SoapMerge(object):
         self.sessionid = sessionid
         self.soap_url = \
             self.SOAP_URL.format(instance_url=instance_url, sf_version=version)
-        print "soap_url", self.soap_url
-    
+   
     def merge(self, objname, merge_dict):
         """
         Invokes standard object's merge.
@@ -109,6 +110,10 @@ class SoapMerge(object):
         mergerequest = ''
         for masterid, mergeidsl in merge_dict.iteritems():
             mergeids = ''
+            if len(mergeidsl) > 2:
+                ids = mergeidsl
+                ids.append(masterid)
+                raise Exception("Can't merge more than 3 records: %s" % (ids))
             for mergeid in mergeidsl:
                 mergeids += MERGE_IDS_LIST_BODY_PART.format(mergeid=mergeid)
             mergerequest += MERGE_REQUEST_BODY_PART.format(
@@ -119,30 +124,35 @@ class SoapMerge(object):
             mergerequest=mergerequest)
 
         response = self._send_merge_request(self.soap_url, merge_soap_request_body)
-        self._check_response(response)
+        self._check_response(response, )
         return self._get_result(response)
         
     # HELPERS
 
     def _get_result(self, response):
-        dict_result = parseXMLResult(response.content)
-        
+        res = parseXMLResultList(response.content, RESPONSE_LIST_NAME)
+        if RESPONSE_LIST_NAME in res:
+            return [res[RESPONSE_LIST_NAME]]
+        else:
+            return [res]
 
     def _send_merge_request(self, soap_url, merge_soap_request_body):
         return requests.post(soap_url,
                              merge_soap_request_body,
                              headers=MERGE_SOAP_REQUEST_HEADERS)
         
-    @staticmethod
-    def _check_response(response):
-        dict_result = parseXMLResult(response.content)
-        print dict_result
+    def _check_response(self,response):
         # handle #1 {u'mergedRecordIds': u'0016100000TkTQqAAN', u'id': u'0016100000RsjBbAAJ', u'success': u'true', u'updatedRelatedIds': u'1CA61000001NHFbGAO'}
         # handle #2 {u'message': u'entity is deleted', u'id': u'0016100000Tl3MFAAZ', u'success': u'false', u'statusCode': u'ENTITY_IS_DELETED'}
         # handle #3 {u'message': u'This Company has Accounts associated with it, and cannot be deleted. Please contact a Salesforce Administrator for assistance.', u'id': u'0016100000Tkx6AAAR', u'success': u'false', u'statusCode': u'DELETE_FAILED'}
+        res = self._get_result(response)
+        if not res:
+            raise Exception('Bad soap merge response')
+        else:
+            dict_res = res[0]
         if response.status_code != 200:
-            fault_string = dict_result['faultstring']
-            fault_code = dict_result['faultcode']
+            fault_string = dict_res['faultstring']
+            fault_code = dict_res['faultcode']
             raise SoapException('{message}: {code}'.format(
                 message=fault_string, code=fault_code))
 
