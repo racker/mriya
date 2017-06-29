@@ -2,6 +2,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/YaroslavLitvinov/mriya/badge.svg?branch=master)](https://coveralls.io/github/YaroslavLitvinov/mriya?branch=master)
 
 # mriya
+![Github repo](https://github.com/YaroslavLitvinov/mriya)
 The hybrid query engine that combines Salesforce bulk queries with
 Sqlite3 queries. It supports batches of SQL queries wrapped into
 specific syntax. Salesforce bulk operations supported:
@@ -28,6 +29,7 @@ py.test --cov-report=term-missing --cov=mriya tests/
 Use sample-config.ini as a base for your config files.<br>
 Specify `[dst]` and `[src]` sections for dst/src endpoints.
 ```
+# Setup an endpoint/s 
 [dst]
 consumer_key = 
 consumer_secret = 
@@ -36,6 +38,13 @@ password =
 host_prefix = 
 production = True/False
 ```
+* Major command line params
+* Provide config file as well as corresponding endpoints:<br>
+```--conf-file config.ini --src-name 'OLD ENDPOINT' --dst-name 'NEW ENDPOINT'```
+* Specify one or several jobs:<br>
+```--job path/to/some_file1.sql --job path/to/some_file2.sql```
+* Explicit defining of data path param is a good practice:<br>
+```--datadir some/data/path```
 
 * Tests<br>
 It uses mocks for any http requests made by application tests.
@@ -130,7 +139,7 @@ example of macro file:
 -- {VAR1} will be substituted by var value
 SELECT {PARAM1}, '{VAR1}' as hello, ID FROM csv.table => csv:{PARAM2}_some_string
 -- resulted macro will be transformated into:
--- SELECT param_value_no_spaces, 'hello' as hello, ID FROM csv.table => csv:some_table_some_string
+SELECT param_value_no_spaces, 'hello' as hello, ID FROM csv.table => csv:some_table_some_string
 ```
 
 Use following construction to run some code in loop
