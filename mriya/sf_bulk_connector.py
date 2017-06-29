@@ -9,6 +9,11 @@ from logging import getLogger
 from time import sleep
 from mriya.base_connector import BaseBulkConnector
 from mriya.log import loginit, STDERR, STDOUT, LOG
+from mriya.sf_merge_wrapper import SfSoapMergeWrapper
+from mriya.bulk_data import get_stream_from_csv_rows_list, get_bulk_data_from_csv_stream
+from mriya.bulk_data import csv_from_bulk_data
+
+JOB_CHECK_TIMER = 5
 
 class SfBulkConnector(BaseBulkConnector):
 
@@ -154,7 +159,7 @@ class SfBulkConnector(BaseBulkConnector):
                                      lines_count, str(max_batch_size), batch_ids)
             # wait until job is completed
             while (not self.bulk.job_is_completed()):
-                sleep(5)
+                sleep(JOB_CHECK_TIMER)
 
             for batch_id in batch_ids:
                 batch_res.extend(self.batch_result(batch_id, len(batch_res)))
@@ -208,4 +213,19 @@ class SfBulkConnector(BaseBulkConnector):
     def bulk_load(self, objname, soql):
         res = self.bulk_common('query', objname, soql, None, None)
         return res
+
+    def soap_merge(self, objname, csv_data):
+        istream = get_stream_from_csv_rows_list(csv_data)
+        bulk_data = get_bulk_data_from_csv_stream(istream)
+        # run
+        merge_engine = SfSoapMergeWrapper(self, objname, bulk_data)
+        if merge_engine.validate() is None:
+            getLogger(STDERR).error("Can't prepare merge data. Exiting...")
+            exit(1)
+        bulk_data = merge_engine.run_merge()
+        return bulk_data
+          
+            
+
+                
 

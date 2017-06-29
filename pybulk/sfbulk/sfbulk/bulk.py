@@ -21,6 +21,8 @@ import logging
 import time
 import errno
 from socket import error as SocketError
+from logging import getLogger
+from mriya.log import STDERR
 
 from sfbulk.callout import Callout
 from sfbulk.exceptions import BulkException
@@ -126,6 +128,7 @@ class Bulk(sf):
         resp = self._bulkHttp(self.JOB,
                               jobinfo.createJob(),
                               self.__content_xml)
+        getLogger(STDERR).debug(resp)
         dict_result = parseXMLResult(resp)
         if self.__check_result(dict_result):
             self.__update_running_job(dict_result)
@@ -148,6 +151,7 @@ class Bulk(sf):
         resp = self._bulkHttp(self.__join((self.JOB, jobinfo.id)),
                               jobinfo.closeJob(),
                               self.__content_xml)
+        getLogger(STDERR).debug(resp)
         dict_result = parseXMLResult(resp)
         if self.__check_result(dict_result):
             self.__update_running_job(dict_result)
@@ -176,6 +180,7 @@ class Bulk(sf):
             self.__join((self.JOB, self.runningJobId, self.BATCH)),
             batchdata, self.__content_csv)
 
+        getLogger(STDERR).debug(resp)
         dict_result = parseXMLResult(resp)
         if self.__check_result(dict_result):
             self.__update_batch_state(jobinfo, dict_result)
@@ -219,6 +224,7 @@ class Bulk(sf):
         resp = self._bulkHttp(
             self.__join((self.JOB, self.runningJobId, self.BATCH, batchId)),
             None, self.__content_csv, 'GET')
+        getLogger(STDERR).debug(resp)
         dict_result = parseXMLResult(resp)
         if self.__check_result(dict_result):
             if dict_result['id'] in jobinfo.batch:
@@ -250,7 +256,7 @@ class Bulk(sf):
             self.__join((self.JOB, self.runningJobId, self.BATCH,
                         batchId, self.RESULT)),
             None, self.__content_csv, 'GET')
-
+        getLogger(STDERR).debug(resp)
         if jobinfo.operation == 'query':
             result_ids = parseXMLResult(resp)
             for chunk_name in sorted(result_ids.keys()):
@@ -268,7 +274,7 @@ class Bulk(sf):
                         self.__join((self.JOB, self.runningJobId, self.BATCH,
                                      batchId, self.RESULT, resultid)),
                         None, self.__content_csv, 'GET')
-
+                getLogger(STDERR).debug(resp)
                 result_chunk = resp.split('\n')
                 # get rid of last empty line
                 if result_chunk and result_chunk[-1] == '':
@@ -361,7 +367,9 @@ class Bulk(sf):
         self.logger.debug("%s url: %s ", httpmethods, url)
         self.logger.debug("headers: %s", headers)
         self.logger.debug("data: %s", submitdata)
+
         resp = self.callClient.docall(url, httpmethods, submitdata, headers)
+
         return resp
 
     def _handle_errors(self, dict_result):

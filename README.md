@@ -1,8 +1,11 @@
+[![Build Status](https://travis-ci.org/YaroslavLitvinov/mriya.svg?branch=master)](https://travis-ci.org/YaroslavLitvinov/mriya)
+[![Coverage Status](https://coveralls.io/repos/github/YaroslavLitvinov/mriya/badge.svg?branch=master)](https://coveralls.io/github/YaroslavLitvinov/mriya?branch=master)
+
 # mriya
 The hybrid query engine that combines Salesforce bulk queries with
 Sqlite3 queries. It supports batches of SQL queries wrapped into
-specific syntax. Salesforce operations supported:
-query,insert,update,delete. The results of queries are saving into
+specific syntax. Salesforce bulk operations supported:
+query,insert,update,delete and soap merge. The results of queries are saving into
 csv files that are readable by sqlite3. So any data transformation can
 be done locally by sqlite and then submitted to salesforce object. One
 thing to note, that Salesforce bulk query syntax is little bit
@@ -19,7 +22,7 @@ Following is an example of a graph representation. Click to open it in chrome/fi
 apt-get install xdot
 pip install -r requirements.txt
 export PYTHONPATH=pybulk/sfbulk/:.
-
+py.test --cov-report=term-missing --cov=mriya tests/
 ```
 * Config file.<br>
 Use sample-config.ini as a base for your config files.<br>
@@ -35,7 +38,7 @@ production = True/False
 ```
 
 * Tests<br>
-For test config `test-config.ini` which name is hardcoded `[test]` section must be specified in order to run tests. Be sure to provide credentials to non production instance as test itself is adding and removing records from salesforce Account object.
+It uses mocks for any http requests made by application tests.
 
 * Troubleshooting<br>
 ```AttributeError: ConfigParser instance has no attribute 'read_file'```<br>
@@ -141,3 +144,17 @@ SELECT CAST(i as INTEGER) as idx FROM csv.ints10000 LIMIT 10 \
 => batch_end:SELECT_BATCH_IDX
 ```
 
+Soap merge expects csv file with MasterRecordId, MergeRecordId columns, example of using:
+```sql
+-- Using data in test.csv merge dup records. Batch size value(200) is ignored
+SELECT MasterRecordId, MergeRecordId FROM csv.test \
+=> csv:Merge_dst_Account \
+=> dst:merge:Account:200:Merge_dst_Account_res_ids
+```
+
+example of resulted Merge_dst_Account_res_ids.csv:
+```csv
+Id,Success,StatusCode,Message
+"0016100000M94ppAAB","false","ENTITY_IS_DELETED","entity is deleted"
+"0016100000M94ppAAA","true","",""
+```

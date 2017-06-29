@@ -4,6 +4,8 @@ __author__ = "Yaroslav Litvinov"
 __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
+import tempfile
+from os.path import join
 from mriya.opexecutor import Executor
 
 def async_engine_assert(stdin_pipe_data):
@@ -32,7 +34,8 @@ def test_1():
     async_engine_assert(None)
 
 def test_2():
-    async_engine_assert('foo')
+    datadir = tempfile.mkdtemp()
+    async_engine_assert(join(datadir, 'foo'))
 
 def test_3():
     executor = Executor()

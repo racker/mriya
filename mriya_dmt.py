@@ -59,12 +59,19 @@ def vars_from_args(args_var):
             variables[item[0]] = item[1]
     return variables
 
+def jobs_from_args(args_job):
+    jobs = []
+    if args_job:
+        for item in args_job:
+            for i in item:
+                jobs.append(i)
+    return jobs
 
 def add_args(parser):
     parser.add_argument("--conf-file", action="store",
                         help="Config file with settings",
                         type=file, required=True)
-    parser.add_argument("--job-file", action="store",
+    parser.add_argument("--job-file", nargs='*', action="append",
                         help="Job file with sql instructions",
                         type=file)
     parser.add_argument('--step-by-step', action='store_true', required=False)
@@ -90,6 +97,7 @@ if __name__ == '__main__':
     import sys  
     reload(sys)  
     sys.setdefaultencoding('utf8')
+    #
     parser = argparse.ArgumentParser()
     parser = add_args(parser)
     args = parser.parse_args()
@@ -98,16 +106,18 @@ if __name__ == '__main__':
         parser.print_help()
         exit(1)
 
+    jobs = jobs_from_args(args.job_file)
     variables = vars_from_args(args.var)
     endpoints = {'src': args.src_name,
                  'dst': args.dst_name}
-    input_file = args.job_file
-    if variables:
-        print "Recognize variables", variables
 
-    # Get logfilenae
     config = ConfigParser()
     config.read_file(args.conf_file)
+
+    if variables:
+        print "Recognize variables", variables
+    
+    # Get logfilenae
     if args.logdir:
         logdirname = args.logdir
     else:
@@ -117,25 +127,26 @@ if __name__ == '__main__':
     else:
         datadirname = config[DEFAULT_SETTINGS_SECTION][DATADIR_SETTING]
     # update data path
-    sql_executor.DATADIRNAME = datadirname
-    # prepare log path
-    logpath = os.path.join(logdirname, 
-                           os.path.basename(input_file.name).split('.')[0])
-    try:
-        os.makedirs(logdirname)
-    except OSError, e:
-        if e.errno != errno.EEXIST:
-            raise
+    sql_executor.setdatadir(datadirname)
     try:
         os.makedirs(datadirname)
     except OSError, e:
         if e.errno != errno.EEXIST:
             raise
-
+    
     loginit(STDOUT)
     loginit(STDERR)
-    loginit(LOG, logpath + '.log')
-    getLogger(STDOUT).info('Starting %s' % input_file.name)
-
-    run_job_from_file(args.conf_file, input_file, endpoints, variables,
-                      args.step_by_step, args.read_only)
+    
+    for input_file in jobs:
+        getLogger(STDOUT).info('Starting %s' % input_file.name)        
+        # prepare log path
+        logpath = os.path.join(logdirname, 
+                               os.path.basename(input_file.name).split('.')[0])
+        try:
+            os.makedirs(logdirname)
+        except OSError, e:
+            if e.errno != errno.EEXIST:
+                raise
+        loginit(LOG, logpath + '.log')        
+        run_job_from_file(args.conf_file, input_file, endpoints, variables,
+                          args.step_by_step, args.read_only)

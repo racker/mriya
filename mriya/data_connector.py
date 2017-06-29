@@ -61,11 +61,12 @@ class AuthToken(object):
     
         token_url_fmt = 'https://{url_prefix}salesforce.com/services/oauth2/token'
         token_url = token_url_fmt.format(url_prefix=conn_param.url_prefix)
-    
+
         result = requests.post(
             token_url,
             headers={"Content-Type":"application/x-www-form-urlencoded"},
             data=req_param)
+
         result_dict = loads(result.content)
         if 'access_token' in result_dict.keys():
             return result_dict['access_token']

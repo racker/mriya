@@ -10,34 +10,36 @@ from collections import namedtuple
 
 BulkData = namedtuple('BulkData', ['fields', 'rows'])
 
-def csv_from_list_of_dicts(list_of_dicts_data):
-    output = StringIO()
-    csv_writer = CsvWriter(output, False)
-    txt = ''
-    for name in sorted(list_of_dicts_data[0].keys()):
-        if txt:
-            txt += ','
-        txt += name
-    txt += '\n'
-    rows = []
-    for dict_data in list_of_dicts_data:
-        row = []
-        for key in sorted(dict_data.keys()):
-            row.append(dict_data[key])
-        rows.append(row)
-    csv_writer.write_csv(rows)
-    output.seek(0)
-    txt += output.getvalue()
-    output.close()
-    csv_writer.close()
-    return txt
+# not used
+# def csv_from_list_of_dicts(list_of_dicts_data):
+#     output = StringIO()
+#     csv_writer = CsvWriter(output, False)
+#     txt = ''
+#     for name in sorted(list_of_dicts_data[0].keys()):
+#         if txt:
+#             txt += ','
+#         txt += name
+#     txt += '\n'
+#     rows = []
+#     for dict_data in list_of_dicts_data:
+#         row = []
+#         for key in sorted(dict_data.keys()):
+#             row.append(dict_data[key])
+#         rows.append(row)
+#     csv_writer.write_csv(rows)
+#     output.seek(0)
+#     txt += output.getvalue()
+#     output.close()
+#     csv_writer.close()
+#     return txt
 
 def get_stream_from_csv_rows_list(csv_rows_list):
     istream = StringIO()
     # put data into stream for handling
     for csv_row in csv_rows_list:
         istream.write(csv_row)
-        istream.write('\n')
+        if len(csv_row) and csv_row[-1] != '\n':
+            istream.write('\n')
     istream.seek(0)
     return istream
 
