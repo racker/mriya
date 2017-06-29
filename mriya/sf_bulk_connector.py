@@ -3,15 +3,17 @@ __author__ = "Yaroslav Litvinov"
 __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
-from StringIO import StringIO
 from mriya import bulk_data
 from sfbulk import Bulk
 from logging import getLogger
 from time import sleep
 from mriya.base_connector import BaseBulkConnector
 from mriya.log import loginit, STDERR, STDOUT, LOG
-from mriya.sf_merge import SoapMerge
+from mriya.sf_merge_wrapper import SfSoapMergeWrapper
 from mriya.bulk_data import get_stream_from_csv_rows_list, get_bulk_data_from_csv_stream
+from mriya.bulk_data import csv_from_bulk_data
+
+JOB_CHECK_TIMER = 5
 
 class SfBulkConnector(BaseBulkConnector):
 
@@ -157,7 +159,7 @@ class SfBulkConnector(BaseBulkConnector):
                                      lines_count, str(max_batch_size), batch_ids)
             # wait until job is completed
             while (not self.bulk.job_is_completed()):
-                sleep(5)
+                sleep(JOB_CHECK_TIMER)
 
             for batch_id in batch_ids:
                 batch_res.extend(self.batch_result(batch_id, len(batch_res)))
@@ -213,58 +215,16 @@ class SfBulkConnector(BaseBulkConnector):
         return res
 
     def soap_merge(self, objname, csv_data):
-        supported = ['lead', 'contact', 'account']
-        if objname.lower() not in supported :
-            msg = 'Merge Error: The only supported object types are %s' % (supported)
-            getLogger(STDERR).error(msg)
-            exit(1)
         istream = get_stream_from_csv_rows_list(csv_data)
         bulk_data = get_bulk_data_from_csv_stream(istream)
-        print "bulk_data", bulk_data
-        merge_data = self.bulkdata_to_mergedict(bulk_data)
-        print "merge_data", merge_data
-        merger = SoapMerge(self.instance_url, self.bulk.sessionid)
-        if merge_data:
-            res = merger.merge(objname, merge_data)
-        else:
-            res = ['"Id","Success","Created","Error"\n']
-        return res
-
-    @staticmethod
-    def isvalidid(iddata):
-        err = 0
-        try:
-            iddata.decode('ascii')
-        except UnicodeDecodeError:
-            err = 1
-        if (len(iddata) == 15 or len(iddata) == 18) and not err:
-            return True
-        return False
-
-    @staticmethod
-    def bulkdata_to_mergedict(bulk_data):
-        mergedict = {}
-        fields = [x.lower() for x in bulk_data.fields]
-        try:
-            master_idx = fields.index('masterrecordid')
-            merge_idx = fields.index('mergerecordid')
-        except ValueError:
-            msg = 'Error: MasterRecordId & MergeRecordId columns are required for merge'
-            getLogger(STDERR).error(msg)
+        # run
+        merge_engine = SfSoapMergeWrapper(self, objname, bulk_data)
+        if merge_engine.validate() is None:
+            getLogger(STDERR).error("Can't prepare merge data. Exiting...")
             exit(1)
-        for pair in bulk_data.rows:
-            masterrecid = pair[master_idx]
-            mergerecid = pair[merge_idx]
-            if not (SfBulkConnector.isvalidid(masterrecid) and \
-                    SfBulkConnector.isvalidid(mergerecid)):
-                msg = 'Error: Invalid Salesforce rec ids %s are provided for merge' % (pair)
-                getLogger(STDERR).error(msg)
-                exit(1)
-            if masterrecid not in mergedict:
-                mergedict[masterrecid] = []
-            mergedict[masterrecid].append(mergerecid)
-        return mergedict
-            
+        bulk_data = merge_engine.run_merge()
+        return bulk_data
+          
             
 
                 

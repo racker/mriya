@@ -56,9 +56,15 @@ class Executor:
         if output_pipe:
             stdout_flag = PIPE
         if input_data:
-            proc = Popen(cmd, shell=True, stdin=PIPE, stdout=stdout_flag)
-            proc.stdin.write(input_data)
-            proc.stdin.close()
+            try_count = 3
+            while try_count:  # as sometimes getting "IOError: [Errno 32] Broken pipe"
+                try:
+                    proc = Popen(cmd, shell=True, stdin=PIPE, stdout=stdout_flag)
+                    proc.stdin.write(input_data)
+                    proc.stdin.close()
+                    try_count = 0 # successfull
+                except IOError:
+                    try_count = try_count -1
         else:
             proc = Popen(cmd, shell=True, stdout=stdout_flag)
         self.subprocesses.append(tclass(refname=refname, popen=proc, cmd=cmd))

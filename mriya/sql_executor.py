@@ -11,8 +11,15 @@ from mriya.job_syntax import JobSyntax, CSV_KEY, QUERY_KEY
 from mriya.job_syntax import DST_KEY, SRC_KEY, PUBLISH_KEY
 from mriya.log import loginit, LOG, STDOUT
 
-# real data path to updated dynamically
-DATADIRNAME = ''
+# real data path must be set dynamically
+DATADIRNAME = None
+
+def setdatadir(datadir):
+    global DATADIRNAME
+    DATADIRNAME = datadir
+
+def datadir():
+    return DATADIRNAME
 
 class SqlExecutor(object):
     def __init__(self, job_syntax_item, variables):
@@ -24,7 +31,7 @@ class SqlExecutor(object):
 
     @staticmethod
     def csv_name(table_name):
-        return os.path.join(DATADIRNAME, table_name) + '.csv'
+        return os.path.join(datadir(), table_name) + '.csv'
 
     @staticmethod
     def valid_csv_exist(table_name):

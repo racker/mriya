@@ -4,6 +4,11 @@ __author__ = "Yaroslav Litvinov"
 __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
+import mock
+import requests_mock
+import mockers #local
+import sfbulk
+
 import logging
 import os
 from pprint import PrettyPrinter
@@ -14,12 +19,14 @@ from mriya import bulk_data
 from mriya.job_syntax import JobSyntax, LINE_KEY
 from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_syntax import BATCH_PARAMS_KEY
-from mriya.sql_executor import SqlExecutor
+from mriya.sql_executor import SqlExecutor, setdatadir
 from mriya.job_controller import JobController
 from mriya.bulk_data import get_bulk_data_from_csv_stream
 from mriya.bulk_data import prepare_received_sf_data
 from mriya.log import loginit, STDOUT, STDERR, LOG
 from mriya.sf_bulk_connector import SfBulkConnector
+from mriya import sf_bulk_connector
+import tempfile
 
 config_filename = 'test-config.ini'
 endpoint_names = {'dst': 'test', 'src': 'test'}
@@ -79,6 +86,7 @@ SELECT 1 => var:MIN => dst:foo'
 
 
 def test_job_syntax():
+    setdatadir(tempfile.mkdtemp())
     loginit(__name__)
     lines = ['--something', #will not be added to parsed values
              'SELECT 1 => csv:const1',
@@ -119,7 +127,14 @@ csv.one_ten, 9; => csv:final => dst:insert:foo:1:res',
     job_syntax = JobSyntax(lines)
     assert_job_syntax_lines(job_syntax.items(), expected)
 
-def test_var_csv():
+@mock.patch.object(sfbulk.callout.Callout, 'docall')
+@requests_mock.Mocker()
+def test_var_csv(mock_docall, m):
+    # mock setup
+    sf_bulk_connector.JOB_CHECK_TIMER = 0    
+    mockers.mock_var_csv(mock_docall, m)
+    # test itself
+    setdatadir(tempfile.mkdtemp())    
     loginit(__name__)
     print "test_var_csv"
     macro_lines = ['SELECT i from csv.ints10000 WHERE i>=CAST(10 as INTEGER) \
@@ -214,7 +229,14 @@ one_ten) as f10 FROM one_ten;',
     with open(SqlExecutor.csv_name('one_nine_ten')) as resulted_file:
         assert resulted_file.read() == 'f1,f9,f10\n1,9,10\n'
 
-def test_job_controller():
+@mock.patch.object(sfbulk.callout.Callout, 'docall')
+@requests_mock.Mocker()
+def test_job_controller(mock_docall, m):
+    # mock setup
+    sf_bulk_connector.JOB_CHECK_TIMER = 0    
+    mockers.mock_job_controller(mock_docall, m)
+    # test itself
+    setdatadir(tempfile.mkdtemp())
     loginit(__name__)
     print "test_job_controller"
 
@@ -225,7 +247,7 @@ def test_job_controller():
     notch = randint(0, 1000000)
     print "notch", notch
     lines = ["SELECT Id,Account_Birthday__c,Name,Alexa__c FROM src.Account LIMIT 1; \
-=> csv:some_data:cache",
+=> csv:some_data",
              "SELECT Id from csv.some_data LIMIT 1; => var:id_test",
              "SELECT Account_Birthday__c,Name,Alexa__c FROM csv.some_data; \
 => csv:some_data_staging => dst:insert:Account:1:newids",
@@ -259,7 +281,7 @@ WHERE Id = '{id_test}' \
             assert len(row[id_idx]) >= 15
 
     assert open(SqlExecutor.csv_name('test_csv')).read() == open(SqlExecutor.csv_name('test_csv_2')).read()
-
+    
 def test_batch_splitter():
     loginit(__name__)
     batch_ranges = SfBulkConnector.batch_ranges(10, 3)
@@ -268,10 +290,10 @@ def test_batch_splitter():
 
 if __name__ == '__main__':
     loginit(__name__)
-    test_batch_splitter()
-    test_columns()
-    test_read()
-    test_job_syntax()
+    # test_batch_splitter()
+    # test_columns()
+    # test_read()
+    # test_job_syntax()
     test_var_csv()
-    test_job_controller()
+    # test_job_controller()
 

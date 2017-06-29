@@ -1,8 +1,13 @@
 #!/usr/bin/env python
 
 __author__ = "Yaroslav Litvinov"
-__copyright__ = "Copyright 2016, Rackspace Inc."
+__copyright__ = "Copyright 2016-2017, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
+
+import mock
+import requests_mock
+import mockers #local
+import sfbulk
 
 import logging
 import sys
@@ -14,12 +19,12 @@ from mriya.data_connector import get_conn_param
 from mriya.data_connector import conn_param_set_token
 from mriya.data_connector import AuthToken
 from mriya.sf_bulk_connector import SfBulkConnector
-from mriya.bulk_data import csv_from_list_of_dicts
 from mriya.bulk_data import parse_batch_res_data
 from mriya.bulk_data import get_bulk_data_from_csv_stream
 from mriya.bulk_data import csv_from_bulk_data
 from mriya.bulk_data import BulkData
 from mriya.log import loginit
+from mriya import sf_bulk_connector
 
 SF_NULL_VALUE = '#N/A'
 config_file = 'test-config.ini'
@@ -31,7 +36,7 @@ mriya,"2005-08-13","Street_Billing_Address\n\
 2YNSCQEHFX",Account\n\
 mriya,"2000-10-23","Street_Billing_Address, 7VLWJ7CMQX",Account\n'
 
-TEST_CSV_UPSERT = 'Name,Account_Birthday__c,Billing_Address__c,type\n\
+TEST_CSV_INSERT2 = 'Name,Account_Birthday__c,Billing_Address__c,type\n\
 mriya,#N/A,Street_Billing_Address_CO9S63EMH4,Account\n'
 
 def columns_compare(col1, col2):
@@ -75,7 +80,13 @@ def fetch_records_by_returned_ids(conn, result_ids, columns):
     selected = parse_batch_res_data(csv_rows)
     return selected
 
-def test_insert_load():
+@mock.patch.object(sfbulk.callout.Callout, 'docall')
+@requests_mock.Mocker()
+def test_insert_load(mock_docall, m):
+    # mock setup
+    sf_bulk_connector.JOB_CHECK_TIMER = 0    
+    mockers.mock_insert_load(mock_docall, m)
+    # test itself
     loginit(__name__)
     config = ConfigParser()
     with open(config_file, 'r') as conf_file:
@@ -105,7 +116,13 @@ def test_insert_load():
         print "expected", expected
         raise
 
-def test_insert_update():
+@mock.patch.object(sfbulk.callout.Callout, 'docall')
+@requests_mock.Mocker()
+def test_insert_update(mock_docall, m):
+    # mock setup    
+    sf_bulk_connector.JOB_CHECK_TIMER = 0
+    mockers.mock_insert_update(mock_docall, m)
+    # test itself
     loginit(__name__)
     config = ConfigParser()
     with open(config_file, 'r') as conf_file:
@@ -116,7 +133,7 @@ def test_insert_update():
     conn = SfBulkConnector(conn_param)
 
     ####### INSERT #####
-    csv_data = TEST_CSV_UPSERT
+    csv_data = TEST_CSV_INSERT2
     bulk_result_ids = conn.bulk_insert('Account', csv_data, 1000, False)
     # Retrieve ids of inserted results
     result_ids = parse_batch_res_data(bulk_result_ids)
@@ -152,7 +169,6 @@ def test_insert_update():
         print "update_data", update_data
         print "selected_update", selected_update
         raise
-
 
 if __name__ == '__main__':
     test_insert_update()

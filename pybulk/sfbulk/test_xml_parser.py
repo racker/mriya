@@ -6,7 +6,22 @@ __email__ = "yaroslav.litvinov@rackspace.com"
 
 from sfbulk.utils_xml import parseXMLResult, parseXMLResultList
 
-SOAP_MERGE_RESP = """<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns="urn:enterprise.soap.sforce.com" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><soapenv:Body><mergeResponse><result><errors><fields xsi:nil="true"/><message>This Company has Accounts associated with it, and cannot be deleted. Please contact a Salesforce Administrator for assistance.</message><statusCode>DELETE_FAILED</statusCode></errors><id>00161000004xxAfAAI</id><success>false</success></result><result><errors><fields xsi:nil="true"/><message>entity is deleted</message><statusCode>ENTITY_IS_DELETED</statusCode></errors><id>0016100000M94ppAAB</id><success>false</success></result><result><errors><fields xsi:nil="true"/><message>entity is deleted</message><statusCode>ENTITY_IS_DELETED</statusCode></errors><id>0016100000J1N4hAAF</id><success>false</success></result><result><errors><fields xsi:nil="true"/><message>entity is deleted</message><statusCode>ENTITY_IS_DELETED</statusCode></errors><id>0016100000Tkzn3AAB</id><success>false</success></result></mergeResponse></soapenv:Body></soapenv:Envelope>"""
+SOAP_MERGE_RESP = """<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns="urn:enterprise.soap.sforce.com" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><soapenv:Body><mergeResponse><result><errors><fields xsi:nil="true"/><message>This Company has Accounts associated with it, and cannot be deleted. Please contact a Salesforce Administrator for assistance.</message><statusCode>DELETE_FAILED</statusCode></errors><id>00161000004xxAfAAI</id><success>false</success></result><result><errors><fields xsi:nil="true"/><message>entity is deleted</message><statusCode>ENTITY_IS_DELETED</statusCode></errors><id>0016100000M94ppAAB</id><success>false</success></result></mergeResponse></soapenv:Body></soapenv:Envelope>"""
+
+SOAP_MERGE_PARSED = {
+    'mergeResponse': [
+        {
+            u'message': u'This Company has Accounts associated with it, and cannot be deleted. Please contact a Salesforce Administrator for assistance.',
+            u'id': u'00161000004xxAfAAI',
+            u'success':
+            u'false',
+            u'statusCode': u'DELETE_FAILED'},
+        {
+            u'message': u'entity is deleted',
+            u'id': u'0016100000M94ppAAB',
+            u'success': u'false',
+            u'statusCode': u'ENTITY_IS_DELETED'}
+    ]}
 
 def test_empty():
     raw_xml = '<empty></empty>'
@@ -40,7 +55,7 @@ def test_big():
 def test_soap_merge_resp():
     res = parseXMLResultList(SOAP_MERGE_RESP, 'mergeResponse')
     print res
-    assert 0
+    assert(res == SOAP_MERGE_PARSED)
     
 if __name__ == '__main__':
     test_one_result()

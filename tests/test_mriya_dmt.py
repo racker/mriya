@@ -4,6 +4,7 @@ __author__ = "Yaroslav Litvinov"
 __copyright__ = "Copyright 2016, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
+import tempfile
 import logging
 import os
 from pprint import PrettyPrinter
@@ -22,6 +23,7 @@ from mriya.sf_bulk_connector import SfBulkConnector
 from mriya.opexecutor import Executor
 
 res="info=pen,pineapple,apple,pen\n"
+datadir = '/tmp/csvdata'
 
 def observer(refname, retcode, stdout):
     print refname, "retcode=", retcode
@@ -37,14 +39,18 @@ def observer(refname, retcode, stdout):
 
 def test_dmt():
     executor = Executor()
-    cmd = "python mriya_dmt.py --conf-file test-config.ini --src-name 'foo1' --dst-name 'foo2' --job-file tests/test.sql --datadir data"
+    cmd = "python mriya_dmt.py --conf-file test-config.ini --src-name 'foo1' --dst-name 'foo2' --job-file tests/test.sql --datadir %s" % (datadir)
     executor.execute('test_dmt', cmd, input_data=None, output_pipe=True)
     res = executor.poll_for_complete(observer)
     print res
 
 def test_graph():
     executor = Executor()
-    cmd = "python graph_dmt.py --conf-file test-config.ini --job-file tests/test.sql --job-file tests/test2.sql --save-graph tests/test_graph --csvdir ../data"
+    graphpath = 'tests/test_graph'
+    graphdir = os.path.dirname(graphpath)
+    relative_path = os.path.relpath(datadir, graphdir)
+    cmd = "python graph_dmt.py --conf-file test-config.ini --job-file tests/test.sql --job-file tests/test2.sql --save-graph %s --csvdir %s" % (graphpath, relative_path)
+    print relative_path
     executor.execute('test_graph', cmd, input_data=None, output_pipe=True)
     res = executor.poll_for_complete(observer)
     print res

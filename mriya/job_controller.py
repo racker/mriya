@@ -64,6 +64,7 @@ class JobController(object):
             ints.write('i\n')
             for i in xrange(10001):
                 ints.write('%d\n' % i)
+            ints.flush()
 
     def __del__(self):
         del self.endpoints
@@ -193,7 +194,7 @@ class JobController(object):
         with open(filename) as csv_f:
             csv_data = csv_f.readlines()
         return csv_data
-        
+
     def handle_transmitter_op(self, job_syntax_item, endpoint):
         opname = job_syntax_item[OP_KEY]
         # run batches sequentially / parallel
@@ -231,8 +232,6 @@ class JobController(object):
                 elif opname == OP_INSERT:
                     res = conn.bulk_insert(objname, csv_data,
                                            max_batch_size, batch_seq)
-                elif opname == OP_MERGE:
-                    res = conn.soap_merge(objname, csv_data)
                 else:
                     assert 0
 
@@ -251,7 +250,41 @@ class JobController(object):
                                      results_file_name)
         getLogger(LOG).info('Done: %s operation', opname)
 
-
+    def handle_transmitter_merge(self, job_syntax_item, endpoint):
+        opname = job_syntax_item[OP_KEY]
+        csv_filename = SqlExecutor.csv_name(job_syntax_item[CSV_KEY])
+        csv_data = self.csvdata(csv_filename)
+        num_lines = len(csv_data)
+        # do nothing for empty data set
+        if num_lines <= 1:
+            getLogger(LOG).info('skip empty csv')
+            from mriya.sf_merge_wrapper import HEADER
+            result_ids = HEADER
+        else:
+            objname = job_syntax_item[endpoint]
+            conn = self.endpoints.endpoint(endpoint)
+            getLogger(STDOUT).info('EXECUTE: %s %s, lines count=%d',
+                                     opname, objname, num_lines-1)
+            t_before = time.time()
+            if len(csv_data):
+                if opname == OP_MERGE:
+                    res = conn.soap_merge(objname, csv_data)
+                else:
+                    assert 0
+                result_ids = res
+            t_after = time.time()
+            getLogger(STDOUT).info('SF %s Took time: %.2f' \
+                                   % (opname, t_after-t_before))
+        if NEW_IDS_TABLE in job_syntax_item:
+            results_file_name = \
+                 SqlExecutor.csv_name(job_syntax_item[NEW_IDS_TABLE])
+            with open(results_file_name, 'w') as result_ids_file:
+                csv_data = csv_from_bulk_data(result_ids)                
+                result_ids_file.write(csv_data)
+            getLogger(LOG).info('Saved result ids: %s',
+                                     results_file_name)
+        getLogger(LOG).info('Done: %s operation', opname)
+        
     def post_operation(self, job_syntax_item):
         endpoint = None
         if DST_KEY in job_syntax_item:
@@ -264,9 +297,10 @@ class JobController(object):
             if opname == OP_UPSERT or \
                opname == OP_INSERT or \
                opname == OP_DELETE or \
-               opname == OP_UPDATE or \
-               opname == OP_MERGE:
+               opname == OP_UPDATE:
                 self.handle_transmitter_op(job_syntax_item, endpoint)
+            elif opname == OP_MERGE:
+                self.handle_transmitter_merge(job_syntax_item, endpoint)
             else:
                 getLogger(STDOUT).error('Unsupported operation: %s',
                                         opname)

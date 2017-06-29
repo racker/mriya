@@ -9,7 +9,7 @@ import logging
 from StringIO import StringIO
 from logging import getLogger
 from sets import Set
-from mriya.sql_executor import SqlExecutor
+from mriya.sql_executor import SqlExecutor, datadir
 from mriya.job_syntax import JobSyntax
 from mriya.job_syntax import CSVLIST_KEY, QUERY_KEY, CSV_KEY, VAR_KEY
 from mriya.job_syntax import BATCH_BEGIN_KEY, BATCH_PARAMS_KEY

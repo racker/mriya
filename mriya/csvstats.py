@@ -14,7 +14,7 @@ from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_controller import JobController
 from mriya.graph import create_graph_data
 from mriya.graph import create_displayable_graph
-from mriya import sql_executor
+from mriya.sql_executor import setdatadir
 
 def async_worker_run_query(conf_datadir_and_template, csvname):
     """ function intended to call by FastQueueProcessor.
@@ -27,7 +27,7 @@ def async_worker_run_query(conf_datadir_and_template, csvname):
     variables = {}
     strbuf = StringIO.StringIO(query_template % csvname)
     job_syntax = JobSyntaxExtended(strbuf.readlines(), [])
-    sql_executor.DATADIRNAME = datadir
+    setdatadir(datadir)
     job_controller = JobController(
         conf,
         endpoints,

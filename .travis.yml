@@ -1,0 +1,22 @@
+language: python
+python:
+  - "2.7"
+install:
+ - pip install -r requirements.txt
+ - pip install coveralls
+before_script:
+ - pushd $PWD
+ - sudo apt-get install graphviz
+ - wget http://www.sqlite.org/2017/sqlite-autoconf-3190300.tar.gz
+ - tar xf sqlite-autoconf-3190300.tar.gz
+ - cd sqlite-autoconf-3190300/
+ - ./configure; make
+ - export PATH=$PWD:$PATH
+ - export PYTHONPATH="pybulk/sfbulk/:."
+ - popd
+script:
+ - echo $PATH
+ - sqlite3 --version
+ - py.test --cov-report=term-missing --cov=mriya tests/
+after_success:
+  coveralls
