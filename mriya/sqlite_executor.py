@@ -16,7 +16,7 @@ from mriya.job_syntax import BATCH_BEGIN_KEY, BATCH_PARAMS_KEY
 from mriya.job_syntax import CONST_KEY, DST_KEY, SRC_KEY
 from mriya.opexecutor import Executor
 from mriya.bulk_data import get_bulk_data_from_csv_stream
-from mriya.log import loginit, STDOUT, LOG
+from mriya.log import loginit, ismoreinfo, STDOUT, LOG, MOREINFO
 
 SQLITE_SCRIPT_FMT='.mode csv\n\
 .separator ","\n\
@@ -89,7 +89,7 @@ class SqliteExecutor(SqlExecutor):
         elif BATCH_BEGIN_KEY in self.job_syntax_item:
             output += ".headers on\n"
             output += ".output stdout\n"
-        getLogger(LOG).info('EXECUTE [CSV]: %s', self.get_query())
+        getLogger(MOREINFO).info('EXECUTE [CSV]: %s', self.get_query())
         input_data = SQLITE_SCRIPT_FMT.format(imports=imports,
                                               output=output,
                                               query=self.get_query())
@@ -121,7 +121,10 @@ class SqliteExecutor(SqlExecutor):
         if CSV_KEY in self.job_syntax_item:
             csvname = self.job_syntax_item[CSV_KEY]
             self.fix_empty_res_table(csvname)
-            getLogger(STDOUT).info('%s.csv - %.2fs' % (csvname, t_after-t_before))
+            if ismoreinfo():
+                getLogger(MOREINFO).info('%s.csv - %.2fs' % (csvname, t_after-t_before))
+            else:
+                getLogger(STDOUT).info('.')
         res = res['refname']
         if res[0] != 0:
             raise Exception("Sqlite query error", self.get_query())

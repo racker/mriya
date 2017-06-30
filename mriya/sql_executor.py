@@ -9,7 +9,7 @@ import re
 from logging import getLogger
 from mriya.job_syntax import JobSyntax, CSV_KEY, QUERY_KEY
 from mriya.job_syntax import DST_KEY, SRC_KEY, PUBLISH_KEY
-from mriya.log import loginit, LOG, STDOUT
+from mriya.log import loginit, LOG, STDOUT, MOREINFO
 
 # real data path must be set dynamically
 DATADIRNAME = None
@@ -55,7 +55,7 @@ class SqlExecutor(object):
     def saved_csv(self):
         if CSV_KEY in self.job_syntax_item:
             name = self.job_syntax_item[CSV_KEY]
-            getLogger(LOG).info('Saved csv: %s, size: %d',
+            getLogger(MOREINFO).info('Saved csv: %s, size: %d',
                                    self.csv_name(name),
                                    self.csv_size(name))
 

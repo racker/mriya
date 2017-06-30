@@ -11,14 +11,20 @@ LOGGING_LEVEL = logging.INFO
 STDOUT = 'stdout' #reserved name
 STDERR = 'stderr' #reserved name
 LOG = 'mriya.log' #reserved name
+MOREINFO = 'moreinfo' #reserved name
 
 # to avoid add loggers having the same names
-INITIALIZED_LOGGERS = []
+INITIALIZED_LOGGERS = {}
 
 def defaultlog():
     loginit(STDOUT)
+    loginit(MOREINFO, STDOUT)
     loginit(LOG, STDOUT)
     loginit(STDERR, STDOUT)
+
+def ismoreinfo():
+    return MOREINFO in INITIALIZED_LOGGERS \
+        and INITIALIZED_LOGGERS[MOREINFO] != LOG
 
 def loginit(name, log_to=None):
     if name in INITIALIZED_LOGGERS:
@@ -30,6 +36,12 @@ def loginit(name, log_to=None):
     if name == LOG:
         file_handler = logging.FileHandler(log_to, 'w')
         log_format = '%(asctime)s %(levelname)-8s %(message)s'
+    elif log_to == LOG:        
+        file_handler = logging.FileHandler(log_to, 'w')
+        log_format = '%(asctime)s %(levelname)-8s %(message)s'
+    elif name == MOREINFO:
+        file_handler = logging.StreamHandler(sys.stdout)
+        log_format = '%(message)s'
     elif log_to == STDOUT:
         file_handler = logging.StreamHandler(sys.stdout)
         log_format = '%(message)s'
@@ -47,7 +59,7 @@ def loginit(name, log_to=None):
     logger = logging.getLogger(name)
     logger.setLevel(LOGGING_LEVEL)
     logger.addHandler(file_handler)
-    INITIALIZED_LOGGERS.append(name)
+    INITIALIZED_LOGGERS[name] = log_to
     if LOGGING_LEVEL == logging.DEBUG:
         # These two lines enable debugging at httplib level
         # (requests->urllib3->http.client) You will see the REQUEST,

@@ -14,7 +14,7 @@ from mriya import sql_executor
 from mriya.job_syntax import *
 from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_controller import JobController
-from mriya.log import loginit, STDOUT, STDERR, LOG
+from mriya.log import loginit, STDOUT, STDERR, LOG, MOREINFO
 from mriya.config import *
 
 def run_job_from_file(config_file, job_file, endpoints, variables,
@@ -75,6 +75,8 @@ def add_args(parser):
                         help="Job file with sql instructions",
                         type=file)
     parser.add_argument('--step-by-step', action='store_true', required=False)
+    parser.add_argument('--moreinfo', action='store_true', required=False,
+                        help="Display sql statement, etc. ")
     parser.add_argument('--var', nargs='*', action='append')
     parser.add_argument("--src-name",
                         help="Name of section from config related to source",
@@ -133,10 +135,10 @@ if __name__ == '__main__':
     except OSError, e:
         if e.errno != errno.EEXIST:
             raise
-    
+   
     loginit(STDOUT)
     loginit(STDERR)
-    
+
     for input_file in jobs:
         getLogger(STDOUT).info('Starting %s' % input_file.name)        
         # prepare log path
@@ -147,6 +149,14 @@ if __name__ == '__main__':
         except OSError, e:
             if e.errno != errno.EEXIST:
                 raise
-        loginit(LOG, logpath + '.log')        
+        loginit(LOG, logpath + '.log')
+
+        if args.moreinfo:
+            loginit(MOREINFO)
+        else:
+            loginit(MOREINFO, LOG)
+        
         run_job_from_file(args.conf_file, input_file, endpoints, variables,
                           args.step_by_step, args.read_only)
+
+        
