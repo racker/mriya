@@ -8,6 +8,13 @@ from mriya.log import loginit, STDERR, STDOUT, LOG
 from mriya.sf_merge import SoapMerge
 from mriya.sf_merge_wrapper import SfSoapMergeWrapper, HEADER
 from mriya.bulk_data import csv_from_bulk_data, BulkData
+from mriya.sql_executor import SqlExecutor, setdatadir
+from mriya.job_syntax_extended import JobSyntaxExtended
+from mriya.opcsv import CsvWriter
+from mriya_dmt import run_job_from_file
+from mockers import mock_oauth, mock_login
+import tempfile
+import os
 
 MERGE_HTTP_RESP = """<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns="urn:enterprise.soap.sforce.com"><soapenv:Header><LimitInfoHeader><limitInfo><current>4735</current><limit>5000000</limit><type>API REQUESTS</type></limitInfo></LimitInfoHeader></soapenv:Header><soapenv:Body><mergeResponse><result><errors><message>...</message><statusCode>DELETE_FAILED</statusCode></errors><id>000001111122222711</id><success>false</success></result><result><id>000001111122222789</id><success>true</success></result></mergeResponse></soapenv:Body></soapenv:Envelope>
 """
@@ -67,6 +74,7 @@ def test_mocked_merge_unsupported_object(m):
     
 @requests_mock.Mocker()
 def test_mocked_merge(m):
+    # test smaller part of merge flow but check output    
     loginit(STDERR)
     fake_bulk_connector = mock.Mock()
     m.post(url=requests_mock.ANY, text = MERGE_HTTP_RESP)
@@ -79,6 +87,27 @@ def test_mocked_merge(m):
     bulk_data = sm.run_merge()
     print bulk_data
     assert BULK_DATA_OUT == bulk_data
+    
+@requests_mock.Mocker()
+def test_merge(m):
+    # test bigger part of merge flow but don't check output
+    datadir = tempfile.mkdtemp()
+    setdatadir(datadir)
+    mock_oauth(m)
+    mock_login(m)
+    m.post(url='https://fake-host.salesforce.com/services/Soap/c/37.0',
+           text = MERGE_HTTP_RESP)    
+    with open(os.path.join(datadir, 'mergedata.csv'), 'w') as mergedata_f:
+        csv_writer = CsvWriter(mergedata_f, False)
+        csv_writer.write_csv([BULK_DATA_IN.fields])
+        csv_writer.write_csv(BULK_DATA_IN.rows)
+
+    config_filename = 'test-config.ini'
+    endpoint_names = {'dst': 'test', 'src': 'test'}
+    with open(config_filename) as config_f:
+        with open('tests/merge.sql') as job_f:
+            run_job_from_file(config_f, job_f, endpoint_names, {}, False, False)
+
     
 if __name__ == '__main__':
     test_resp_parser()

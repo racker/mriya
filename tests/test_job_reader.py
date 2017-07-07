@@ -88,11 +88,11 @@ SELECT 1 => var:MIN => dst:foo'
 def test_job_syntax():
     setdatadir(tempfile.mkdtemp())
     loginit(__name__)
-    lines = ['--something', #will not be added to parsed values
+    lines = ['--something', #this is a comment line, will not be added to parsed values
              'SELECT 1 => csv:const1',
              'SELECT 1 => var:MIN',
              'SELECT f1, (SELECT f2 FROM csv.one_ten) as f10 FROM \
-csv.one_ten, 9; => csv:final => dst:insert:foo:1:res',
+csv.one_ten, 9; => csv:final:cache => dst:insert:foo:1:res => type:sequential',
              'SELECT 1 as bacth1 from csv.some_csv; \
 => batch_begin:batch1:BATCH',
              'SELECT 1 from dst.some_object WHERE b=a \
@@ -107,6 +107,7 @@ csv.one_ten, 9; => csv:final => dst:insert:foo:1:res',
         {'from': 'csv', 'query': 'SELECT 1', 'var': 'MIN'},
         {'query': 'SELECT f1, (SELECT f2 FROM one_ten) as f10 FROM one_ten, 9;',
          'csv': 'final', 'from': 'csv', 'dst' : 'foo', 'op' : 'insert',
+         'type': 'sequential', 'cache': '',
          'csvlist': ['one_ten'], 'batch_size': '1', 'new_ids_table': 'res'},
         {'query': 'SELECT 1 as bacth1 from some_csv;',
          'batch_begin': ('batch1', 'BATCH'), 'from': 'csv',
