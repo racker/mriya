@@ -12,12 +12,12 @@ import sfbulk
 import logging
 import sys
 import pprint
+from os import remove
 from StringIO import StringIO
 from logging import getLogger
 from configparser import ConfigParser
-from mriya.data_connector import get_conn_param
-from mriya.data_connector import conn_param_set_token
-from mriya.data_connector import AuthToken
+from mriya.config import DEFAULT_SETTINGS_SECTION, SESSIONS_SETTING
+from mriya.data_connector import create_bulk_connector
 from mriya.sf_bulk_connector import SfBulkConnector
 from mriya.bulk_data import parse_batch_res_data
 from mriya.bulk_data import get_bulk_data_from_csv_stream
@@ -91,11 +91,12 @@ def test_insert_load(mock_docall, m):
     config = ConfigParser()
     with open(config_file, 'r') as conf_file:
         config.read_file(conf_file)
-    conn_param = get_conn_param(config['test'])
-    print "ok"
-    auth_token = AuthToken(conn_param, 'sessions.ini')
-    conn_param = auth_token.conn_param_with_token()
-    conn = SfBulkConnector(conn_param)
+    # test case when sessions file exists but has no token
+    sessions_file_name = config[DEFAULT_SETTINGS_SECTION][SESSIONS_SETTING]
+    with open(sessions_file_name, 'w') as sessions_f:
+        sessions_f.write('{"someuser": "someaccesstoken"}')
+        
+    conn = create_bulk_connector(config, 'test')
 
     ####### INSERT #####
     csv_data = TEST_CSV_INSERT
@@ -127,10 +128,12 @@ def test_insert_update(mock_docall, m):
     config = ConfigParser()
     with open(config_file, 'r') as conf_file:
         config.read_file(conf_file)
-    conn_param = get_conn_param(config['test'])
-    auth_token = AuthToken(conn_param, 'sessions.ini')
-    conn_param = auth_token.conn_param_with_token()
-    conn = SfBulkConnector(conn_param)
+
+    # test case when sessions file doesn't exist
+    sessions_file_name = config[DEFAULT_SETTINGS_SECTION][SESSIONS_SETTING]
+    remove(sessions_file_name)
+    
+    conn = create_bulk_connector(config, 'test')
 
     ####### INSERT #####
     csv_data = TEST_CSV_INSERT2

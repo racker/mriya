@@ -13,9 +13,6 @@ ConnectorParam = namedtuple('ConnectorParam',
                           'production', 'consumer_key',
                           'consumer_secret', 'token'])
 
-QUERY_LIMIT = 200
-session_file = 'sessions.ini'
-
 def get_conn_param(conf_dict):
     param = ConnectorParam(conf_dict[USERNAME_SETTING].encode('utf-8'),
                            conf_dict[PASSWORD_SETTING].encode('utf-8'),
@@ -41,9 +38,9 @@ def create_bulk_connector(config, setting_name):
     return conn
 
 class AuthToken(object):
-    def __init__(self, conn_param, cache_file_path):
+    def __init__(self, conn_param, sessions_file):
         self.conn_param = conn_param
-        self.cache_file_path = cache_file_path
+        self.sessions_file = sessions_file
         self.conn_param = conn_param_set_token(conn_param, self.get_token())
 
     def conn_param_with_token(self):
@@ -82,7 +79,7 @@ class AuthToken(object):
 
     def get_cached_token(self):
         try:
-            tokens_dict = load(open(self.cache_file_path, 'r'))
+            tokens_dict = load(open(self.sessions_file, 'r'))
         except:
             return None
         if self.conn_param.username in tokens_dict.keys():
@@ -93,11 +90,11 @@ class AuthToken(object):
     def save_token(self, token):
         tokens_dict = {}
         try:
-            tokens_dict = load(open(session_file, 'r'))
+            tokens_dict = load(open(self.sessions_file, 'r'))
         except:
             pass
         tokens_dict[self.conn_param.username] = token
-        dump(tokens_dict, open(session_file, 'w'))
+        dump(tokens_dict, open(self.sessions_file, 'w'))
         
 
 

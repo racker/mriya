@@ -19,8 +19,6 @@ class SfBulkConnector(BaseBulkConnector):
 
     def __init__(self, conn_param):
         super(SfBulkConnector, self).__init__(conn_param)
-        #loginit(__name__)
-        # initialize bulk
         self.bulk = Bulk(self.instance_url)
         self.bulk.login(username=self.conn_param.username,
                         password=self.conn_param.password,

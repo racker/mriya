@@ -249,6 +249,8 @@ def test_job_controller(mock_docall, m):
     print "notch", notch
     lines = ["SELECT Id,Account_Birthday__c,Name,Alexa__c FROM src.Account LIMIT 1; \
 => csv:some_data",
+             "SELECT Id,Account_Birthday__c,Name,Alexa__c FROM src.Account LIMIT 1; \
+=> csv:some_data:cache",             
              "SELECT Id from csv.some_data LIMIT 1; => var:id_test",
              "SELECT Account_Birthday__c,Name,Alexa__c FROM csv.some_data; \
 => csv:some_data_staging => dst:insert:Account:1:newids => type:sequential",
