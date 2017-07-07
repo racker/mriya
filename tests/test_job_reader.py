@@ -251,13 +251,13 @@ def test_job_controller(mock_docall, m):
 => csv:some_data",
              "SELECT Id from csv.some_data LIMIT 1; => var:id_test",
              "SELECT Account_Birthday__c,Name,Alexa__c FROM csv.some_data; \
-=> csv:some_data_staging => dst:insert:Account:1:newids",
+=> csv:some_data_staging => dst:insert:Account:1:newids => type:sequential",
              "UPDATE csv.some_data SET Account_Birthday__c=null, Name='%d'; \
              SELECT Id,Account_Birthday__c,Name,Alexa__c FROM csv.some_data \
 WHERE Id = '{id_test}' \
              => csv:some_data_staging => dst:update:Account:1:res_ids" % notch,
              "SELECT '{id_test}' as Id,Alexa__c FROM csv.test_csv => csv:some_data_staging2 => \
-              dst:update:Account:1:res_ids",
+              dst:update:Account:1:res_ids => type:parallel",
              "SELECT Alexa__c FROM dst.Account WHERE Id = '{id_test}' => csv:test_csv_2"]
     job_syntax = JobSyntaxExtended(lines)
     with open(config_filename) as conf_file:
@@ -265,6 +265,7 @@ WHERE Id = '{id_test}' \
                                        job_syntax, {}, False)
     job_controller.run_job()
     del job_controller
+    # check resulted data
     with open(SqlExecutor.csv_name('some_data_staging')) as resulted_file:
         csv_data = get_bulk_data_from_csv_stream(resulted_file)
         name_idx = csv_data.fields.index('Name')

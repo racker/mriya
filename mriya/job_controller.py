@@ -114,13 +114,15 @@ class JobController(object):
     def step_by_step(self):
         yes = set(['yes','y', 'ye', ''])
         no = set(['no','n'])
-        choice = raw_input().lower()
-        if choice in yes:
-            return True
-        elif choice in no:
-            return False
-        else:
-            print "Please respond with 'yes' or 'no'"
+        while True:
+            choice = raw_input().lower()
+            print "choice", choice
+            if choice in yes:
+                return True
+            elif choice in no:
+                return False
+            else:
+                print "Please respond with 'yes' or 'no'"
 
     def run_job(self):
         batch_items = None

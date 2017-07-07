@@ -44,6 +44,19 @@ def test_dmt():
     res = executor.poll_for_complete(observer)
     print res
 
+def test_stepbystep_yes_maybe_no():
+    answers = """y
+y
+maybe_yes_maybe_no_maybe_xxx_idontknow
+n
+
+"""
+    executor = Executor()
+    cmd = "python mriya_dmt.py --conf-file test-config.ini --step-by-step --src-name 'foo1' --dst-name 'foo2' --job-file tests/test.sql --datadir %s" % (datadir)
+    executor.execute('test_dmt_yes_no', cmd, input_data=answers, output_pipe=True)
+    res = executor.poll_for_complete(observer)
+    print res
+    
 def test_graph():
     executor = Executor()
     graphpath = 'tests/test_graph'
