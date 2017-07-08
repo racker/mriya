@@ -8,7 +8,15 @@ SELECT Id,Account_Birthday__c,Name,Alexa__c FROM src.Account LIMIT 1; \
 SELECT Id,Account_Birthday__c,Name,Alexa__c FROM src.Account LIMIT 1; \
 => csv:some_data:cache
 
-SELECT Id from csv.some_data LIMIT 1; => var:id_test
+SELECT 'csv.some_data' => var:CSVTABLE => const:
+
+SELECT Id from {CSVTABLE} LIMIT 1; => var:id_test
+
+-- this statement is just for testing coverage
+SELECT a.Id, b.Id FROM csv.some_data a \
+INNER JOIN {CSVTABLE} b ON a.Id = b.Id and b.Id =777 \
+=> csv:nonsencejoin
+---------------------------------------------
 
 SELECT Account_Birthday__c,Name,Alexa__c FROM csv.some_data; \
 => csv:some_data_staging => dst:insert:Account:1:newids => type:sequential
