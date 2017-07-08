@@ -29,7 +29,7 @@ def observer(refname, retcode, stdout):
     if refname == 'test_dmt':
         assert retcode == 0 
         assert stdout.readlines()[-1] == res
-    elif refname == 'test_graph':
+    elif refname == 'test_graph' or refname == 'test_dmt_yes_no':
         assert retcode == 0
     elif refname == 'test_dmt_bad_param':
         assert retcode == 1
@@ -55,13 +55,16 @@ n
     executor.execute('test_dmt_yes_no', cmd, input_data=answers, output_pipe=True)
     res = executor.poll_for_complete(observer)
     print res
-    
-def test_graph():
+
+def run_test_graph(datadir, sqlfpath):
+    """it's will be used by another test test_job_reader.test_job_controller
+    As all the data was prepared by mocked sources and mocks will not work in a subprocess"""
+    # run graph
     executor = Executor()
     graphpath = 'tests/test_graph'
     graphdir = os.path.dirname(graphpath)
     relative_path = os.path.relpath(tempfile.mkdtemp(), graphdir)
-    cmd = "python graph_dmt.py --conf-file test-config.ini --job-file tests/test.sql --job-file tests/test2.sql --save-graph %s --csvdir %s" % (graphpath, relative_path)
+    cmd = "python graph_dmt.py --conf-file test-config.ini --job-file %s --job-file tests/test2.sql --save-graph %s --csvdir %s" % (sqlfpath, graphpath, relative_path)
     print relative_path
     executor.execute('test_graph', cmd, input_data=None, output_pipe=True)
     res = executor.poll_for_complete(observer)

@@ -256,6 +256,10 @@ def mock_job_controller(mock_docall, m):
     http_mock.addmock_query(
         operation='query', jobid='750n00000021Gv3AAE', batchid='751n0000002AC5GAAW',
         result=[('752n0000000ylnP', query2_resp)])
+
+    http_mock.addmock_insert_update_delete(
+        operation='update', jobid='750n00000021GufAAE', batchid='751n0000002AC5BABW',
+        resp=update2_resp)
     
     # mock install
     mock_docall.side_effect = http_mock.side_effect()

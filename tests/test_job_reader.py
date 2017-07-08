@@ -19,13 +19,14 @@ from mriya import bulk_data
 from mriya.job_syntax import JobSyntax, LINE_KEY
 from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_syntax import BATCH_PARAMS_KEY
-from mriya.sql_executor import SqlExecutor, setdatadir
+from mriya.sql_executor import SqlExecutor, setdatadir, datadir
 from mriya.job_controller import JobController
 from mriya.bulk_data import get_bulk_data_from_csv_stream
 from mriya.bulk_data import prepare_received_sf_data
 from mriya.log import loginit, STDOUT, STDERR, LOG
 from mriya.sf_bulk_connector import SfBulkConnector
 from mriya import sf_bulk_connector
+from test_mriya_dmt import run_test_graph
 import tempfile
 
 config_filename = 'test-config.ini'
@@ -240,27 +241,15 @@ def test_job_controller(mock_docall, m):
     setdatadir(tempfile.mkdtemp())
     loginit(__name__)
     print "test_job_controller"
-
+    
+    # prepare test_csv.csv
     test_csv = ['"Alexa__c"', '"hello\n\n2"']
     with open(SqlExecutor.csv_name('test_csv'), "w") as test_csv_f:
         test_csv_f.write('"Alexa__c"\n"hello<N CR><N CR>2"\n')
 
-    notch = randint(0, 1000000)
-    print "notch", notch
-    lines = ["SELECT Id,Account_Birthday__c,Name,Alexa__c FROM src.Account LIMIT 1; \
-=> csv:some_data",
-             "SELECT Id,Account_Birthday__c,Name,Alexa__c FROM src.Account LIMIT 1; \
-=> csv:some_data:cache",             
-             "SELECT Id from csv.some_data LIMIT 1; => var:id_test",
-             "SELECT Account_Birthday__c,Name,Alexa__c FROM csv.some_data; \
-=> csv:some_data_staging => dst:insert:Account:1:newids => type:sequential",
-             "UPDATE csv.some_data SET Account_Birthday__c=null, Name='%d'; \
-             SELECT Id,Account_Birthday__c,Name,Alexa__c FROM csv.some_data \
-WHERE Id = '{id_test}' \
-             => csv:some_data_staging => dst:update:Account:1:res_ids" % notch,
-             "SELECT '{id_test}' as Id,Alexa__c FROM csv.test_csv => csv:some_data_staging2 => \
-              dst:update:Account:1:res_ids => type:parallel",
-             "SELECT Alexa__c FROM dst.Account WHERE Id = '{id_test}' => csv:test_csv_2"]
+    notch = 'test1234567'
+    with open('tests/complicated.sql') as sql_f:
+        lines = sql_f.readlines()
     job_syntax = JobSyntaxExtended(lines)
     with open(config_filename) as conf_file:
         job_controller = JobController(conf_file.name, endpoint_names,
@@ -272,7 +261,7 @@ WHERE Id = '{id_test}' \
         csv_data = get_bulk_data_from_csv_stream(resulted_file)
         name_idx = csv_data.fields.index('Name')
         assert 1 == len(csv_data.rows)
-        assert csv_data.rows[0][name_idx] == str(notch)
+        assert csv_data.rows[0][name_idx] == notch
     with open(SqlExecutor.csv_name('newids')) as newids_file:
         csv_data = get_bulk_data_from_csv_stream(newids_file)
         id_idx = csv_data.fields.index('Id')
@@ -284,7 +273,10 @@ WHERE Id = '{id_test}' \
         for row in csv_data.rows:
             assert len(row[id_idx]) >= 15
 
-    assert open(SqlExecutor.csv_name('test_csv')).read() == open(SqlExecutor.csv_name('test_csv_2')).read()
+    assert open(SqlExecutor.csv_name('test_csv')).read() \
+        == open(SqlExecutor.csv_name('test_csv_2')).read()
+    # run another test using created data
+    run_test_graph(datadir(), "tests/complicated.sql")
     
 def test_batch_splitter():
     loginit(__name__)
