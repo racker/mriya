@@ -33,7 +33,8 @@ def run_job_from_file(config_file, job_file, endpoints, variables,
                       (x[OP_KEY] == OP_DELETE or \
                        x[OP_KEY] == OP_UPDATE or \
                        x[OP_KEY] == OP_INSERT or \
-                       x[OP_KEY] == OP_UPSERT)]
+                       x[OP_KEY] == OP_UPSERT or \
+                       x[OP_KEY] == OP_MERGE)]
     if read_only and restricted_ops:
         fmt_mes = "Option -read-only is specified, so \
 '%s' operations can't be used in current session"
