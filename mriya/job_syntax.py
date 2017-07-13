@@ -18,6 +18,7 @@ LINE_KEY = 'line'
 MACRO_KEY = 'macro'
 CONST_KEY = 'const'
 PUBLISH_KEY = 'publish'
+NOPE_KEY = 'nope' # stub param 
 
 BATCH_PARAMS_KEY = 'batch_params'
 BATCH_BEGIN_KEY = 'batch_begin'
@@ -204,6 +205,8 @@ class JobSyntax(object):
                 flag = key_vals[2]
                 if flag == PUBLISH_KEY:
                     values[PUBLISH_KEY] = ''
+        elif key == NOPE_KEY:
+            values[key] = val
         elif key == CONST_KEY:
             values[key] = val
         elif key == BATCH_TYPE_KEY:
