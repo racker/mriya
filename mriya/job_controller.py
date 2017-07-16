@@ -18,6 +18,7 @@ from mriya.sqlite_executor import SqliteExecutor
 from mriya.salesforce_executor import SalesforceExecutor
 from mriya.data_connector import create_bulk_connector
 from mriya.bulk_data import csv_from_bulk_data, parse_batch_res_data
+from mriya.bulk_data import BulkData
 from mriya.job_syntax_extended import JobSyntaxExtended, BATCH_KEY
 from mriya.sf_merge import SoapMerge
 from mriya.config import *
@@ -261,7 +262,7 @@ class JobController(object):
         if num_lines <= 1:
             getLogger(LOG).info('skip empty csv')
             from mriya.sf_merge_wrapper import HEADER
-            result_ids = HEADER
+            result_ids = BulkData(HEADER, [])
         else:
             objname = job_syntax_item[endpoint]
             conn = self.endpoints.endpoint(endpoint)
@@ -272,7 +273,7 @@ class JobController(object):
                 if opname == OP_MERGE:
                     res = conn.soap_merge(objname, csv_data)
                 else:
-                    assert 0
+                    raise Exception('App internal error')
                 result_ids = res
             t_after = time.time()
             getLogger(STDOUT).info('SF %s Took time: %.2f' \

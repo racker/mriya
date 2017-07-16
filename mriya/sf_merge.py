@@ -18,9 +18,10 @@ You should have received a copy of the GNU General Public License
 along with sfbulk.  If not, see <http://www.gnu.org/licenses/>.
 """
 import requests
-
+from collections import namedtuple
 from sfbulk.utils_xml import parseXMLResultList
 
+MergeData = namedtuple('MergeData', ['MasterRecordId', 'MergeRecordId'] )
 
 # XML CONSTANS
 
@@ -105,10 +106,12 @@ class SoapMerge(object):
         Invokes standard object's merge.
         @merge_dict - {'master_record': ['mergeid1', .. , 'mergeidn']}
         """
-
+        keys_to_save_order = []
+        
         # prepare request body
         mergerequest = ''
         for masterid, mergeidsl in merge_dict.iteritems():
+            keys_to_save_order.append(masterid)
             mergeids = ''
             for mergeid in mergeidsl:
                 mergeids += MERGE_IDS_LIST_BODY_PART.format(mergeid=mergeid)
@@ -121,9 +124,49 @@ class SoapMerge(object):
 
         response = self._send_merge_request(self.soap_url, merge_soap_request_body)
         self._check_response(response)
-        return self._result(parseXMLResultList(response.content, RESPONSE_LIST_NAME))
+        rows_res = self._parse_merge_results(
+            self._result(
+                parseXMLResultList(response.content, RESPONSE_LIST_NAME)))
+        return self._get_ordered_results(keys_to_save_order, rows_res)
+        return res
         
     # HELPERS
+
+    @staticmethod
+    def _get_ordered_results(ordered_keys, rows_res):
+        # As some of sf results not returning id in result, add it here
+        ordered_rows = []
+        for idx, key in enumerate(ordered_keys):
+            row = rows_res[idx]
+            id_val = row[0]
+            if id_val and key != id_val:
+                raise Exception('Soap Merge internal error')
+            else:
+                row[0] = key
+            ordered_rows.append(row)
+        return ordered_rows
+    
+    @staticmethod
+    def _parse_merge_results(results):
+        res = []
+        for dict_res in results:
+            oneparsed = []
+            if type(dict_res) is dict:
+                if 'id' in dict_res:
+                    oneparsed.append(dict_res['id'])
+                else:
+                    oneparsed.append('')
+                oneparsed.append(dict_res['success'])
+                if 'statusCode' in dict_res:
+                    oneparsed.append(dict_res['statusCode'])
+                else:
+                    oneparsed.append('')
+                if 'message' in dict_res:
+                    oneparsed.append(dict_res['message'])
+                else:
+                    oneparsed.append('')
+            res.append(oneparsed)
+        return res
 
     @staticmethod
     def _result(res):
@@ -149,3 +192,5 @@ class SoapMerge(object):
             raise SoapException('{message}: {code}'.format(
                 message=fault_string, code=fault_code))
 
+
+        

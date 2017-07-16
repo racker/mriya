@@ -3,12 +3,14 @@ __copyright__ = "Copyright 2017, Rackspace Inc."
 __email__ = "yaroslav.litvinov@rackspace.com"
 
 from StringIO import StringIO
-from mriya.sf_merge import SoapMerge
+from mriya.sf_merge import SoapMerge, MergeData
 from logging import getLogger
 from mriya.log import loginit, STDERR, STDOUT, LOG
 from mriya.bulk_data import BulkData
 
-MAX_CHUNKS_COUNT = 200
+#Resolve the "Too many SOQL queries: 101" error
+#To fix the issue, change your code so that the number of SOQL fired is less than 100.
+MAX_CHUNKS_COUNT = 99
 HEADER = ("Id","Success","StatusCode","Message")
 HEADER_CSV = ['"Id","Success","StatusCode","Message"\n']
 
@@ -46,10 +48,10 @@ class SfSoapMergeWrapper(object):
                 current_chunk[k] = v
                 if len(current_chunk) == MAX_CHUNKS_COUNT:
                     res = merger.merge(self.objname, current_chunk)
-                    rows.extend(self._parse_merge_results(res))
+                    rows.extend(res)
                     current_chunk.clear()
             res = merger.merge(self.objname, current_chunk)
-            rows.extend(self._parse_merge_results(res))
+            rows.extend(res)
             bulk_data = BulkData(fields=HEADER, rows = rows)
         else:
             bulk_data = BulkData(fields=HEADER, rows = [])
@@ -103,22 +105,3 @@ class SfSoapMergeWrapper(object):
                 return None
         return mergedict
     
-    @staticmethod
-    def _parse_merge_results(results):
-        res = []
-        for dict_res in results:
-            oneparsed = []
-            if type(dict_res) is dict:
-                oneparsed.append(dict_res['id'])
-                oneparsed.append(dict_res['success'])
-                if 'statusCode' in dict_res:
-                    oneparsed.append(dict_res['statusCode'])
-                else:
-                    oneparsed.append('')
-                if 'message' in dict_res:
-                    oneparsed.append(dict_res['message'])
-                else:
-                    oneparsed.append('')
-            res.append(tuple(oneparsed))
-        return res
-

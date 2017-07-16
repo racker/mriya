@@ -38,11 +38,17 @@ class SfBulkConnector(BaseBulkConnector):
                 getLogger(STDERR).error('%s bachFailed %s',
                                         batch_id, errmes)
 
-    def handle_op_returning_ids(self, opname, objname, res):
-        result_ids = bulk_data.parse_batch_res_data(res)
+    def handle_op_returning_ids(self, opname, objname, res, merge=False):
+        if not merge:
+            result_ids = bulk_data.parse_batch_res_data(res)
+        else:
+            result_ids = res
         id_idx = result_ids.fields.index('Id')
         success_idx = result_ids.fields.index('Success')
-        error_idx = result_ids.fields.index('Error')
+        if not merge:
+            error_idx = result_ids.fields.index('Error')
+        else:
+            error_idx = result_ids.fields.index('Message')
         max_err_count_output = 100
         for item in result_ids.rows:
             if item[success_idx] != 'true':
@@ -185,7 +191,7 @@ class SfBulkConnector(BaseBulkConnector):
     def bulk_insert(self, objname, csv_data, max_batch_size, seq):
         res = self.bulk_common('insert', objname, csv_data,
                                 max_batch_size, seq)
-        self.handle_op_returning_ids('insert', objname, res)
+        self.handle_op_returning_ids('insert', objname, res, False)
         return res
 
     def bulk_upsert(self, objname, csv_data, max_batch_size, seq,
@@ -193,19 +199,19 @@ class SfBulkConnector(BaseBulkConnector):
         # not supported 
         res = self.bulk_common('upsert', objname, csv_data,
                                 upsert_external_field)
-        self.handle_op_returning_ids('upsert', objname, res)
+        self.handle_op_returning_ids('upsert', objname, res, False)
         return res
 
     def bulk_delete(self, objname, csv_data, max_batch_size, seq):
         res = self.bulk_common('delete', objname, csv_data,
                                 max_batch_size, seq)
-        self.handle_op_returning_ids('delete', objname, res)
+        self.handle_op_returning_ids('delete', objname, res, False)
         return  res
 
     def bulk_update(self, objname, csv_data, max_batch_size, seq):
         res = self.bulk_common('update', objname, csv_data,
                                 max_batch_size, seq)
-        self.handle_op_returning_ids('update', objname, res)
+        self.handle_op_returning_ids('update', objname, res, False)
         return res
 
     def bulk_load(self, objname, soql):
@@ -214,14 +220,15 @@ class SfBulkConnector(BaseBulkConnector):
 
     def soap_merge(self, objname, csv_data):
         istream = get_stream_from_csv_rows_list(csv_data)
-        bulk_data = get_bulk_data_from_csv_stream(istream)
+        data = get_bulk_data_from_csv_stream(istream)
         # run
-        merge_engine = SfSoapMergeWrapper(self, objname, bulk_data)
+        merge_engine = SfSoapMergeWrapper(self, objname, data)
         if merge_engine.validate() is None:
             getLogger(STDERR).error("Can't prepare merge data. Exiting...")
             exit(1)
-        bulk_data = merge_engine.run_merge()
-        return bulk_data
+        result_ids = merge_engine.run_merge()
+        self.handle_op_returning_ids('soap merge', objname, result_ids, True)
+        return result_ids
           
             
 
