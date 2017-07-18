@@ -1,22 +1,23 @@
 """
-Copyright (C) 2012-2013 by Clearcode <http://clearcode.cc>
+Copyright (C) 2016-2017 by Yaroslav Litvinov <yaroslav.litvinov@gmail.com>
 and associates (see AUTHORS).
 
-This file is part of sfbulk.
+This file is part of Mriya.
 
-sfbulk is free software: you can redistribute it and/or modify
+Mriya is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-sfbulk is distributed in the hope that it will be useful,
+Mriya is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with sfbulk.  If not, see <http://www.gnu.org/licenses/>.
+along with Mriya.  If not, see <http://www.gnu.org/licenses/>.
 """
+
 import requests
 from collections import namedtuple
 from sfbulk.utils_xml import parseXMLResultList
@@ -122,11 +123,11 @@ class SoapMerge(object):
             sessionid=self.sessionid,
             mergerequest=mergerequest)
 
+        print merge_soap_request_body
         response = self._send_merge_request(self.soap_url, merge_soap_request_body)
-        self._check_response(response)
-        rows_res = self._parse_merge_results(
-            self._result(
-                parseXMLResultList(response.content, RESPONSE_LIST_NAME)))
+        print response.content        
+        rows_res = self._parse_merge_results(self._get_check_result(response))
+        print rows_res
         return self._get_ordered_results(keys_to_save_order, rows_res)
         return res
         
@@ -140,10 +141,11 @@ class SoapMerge(object):
             row = rows_res[idx]
             id_val = row[0]
             if id_val and key != id_val:
-                raise Exception('Soap Merge internal error')
+                raise Exception('Soap Merge internal error %s != %s' %
+                                (key, id_val))
             else:
                 row[0] = key
-            ordered_rows.append(row)
+            ordered_rows.append(tuple(row))
         return ordered_rows
     
     @staticmethod
@@ -169,9 +171,9 @@ class SoapMerge(object):
         return res
 
     @staticmethod
-    def _result(res):
-        if RESPONSE_LIST_NAME in res:
-            return res[RESPONSE_LIST_NAME]
+    def _result(res, listname):
+        if listname in res:
+            return res[listname]
         else:
             return [res]
 
@@ -180,8 +182,9 @@ class SoapMerge(object):
                              merge_soap_request_body,
                              headers=MERGE_SOAP_REQUEST_HEADERS)
         
-    def _check_response(self,response):
-        res = self._result(parseXMLResultList(response.content, RESPONSE_LIST_NAME))
+    def _get_check_result(self,response):
+        res = self._result(parseXMLResultList(response.content, RESPONSE_LIST_NAME),
+                           RESPONSE_LIST_NAME)
         if not res:
             raise Exception('Bad soap merge response')
         else:
@@ -191,6 +194,16 @@ class SoapMerge(object):
             fault_code = dict_res['faultcode']
             raise SoapException('{message}: {code}'.format(
                 message=fault_string, code=fault_code))
+
+        # print 'mergedRecordIds',\
+        #     self._result(parseXMLResultList(response.content, 'mergedRecordIds'),
+        #                  'mergedRecordIds')
+
+        # print 'updatedRelatedIds',\
+        #     self._result(parseXMLResultList(response.content, 'updatedRelatedIds'),
+        #                  'updatedRelatedIds')
+        
+        return res
 
 
         

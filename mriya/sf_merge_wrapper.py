@@ -1,6 +1,24 @@
+"""
+Copyright (C) 2016-2017 by Yaroslav Litvinov <yaroslav.litvinov@gmail.com>
+and associates (see AUTHORS).
+
+This file is part of Mriya.
+
+Mriya is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Mriya is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Mriya.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 __author__ = "Yaroslav Litvinov"
-__copyright__ = "Copyright 2017, Rackspace Inc."
-__email__ = "yaroslav.litvinov@rackspace.com"
 
 from StringIO import StringIO
 from mriya.sf_merge import SoapMerge, MergeData
@@ -18,10 +36,11 @@ class SfSoapMergeWrapper(object):
     """ This object is intended to be created just before merge operation, 
     and to be deleted after operation completion. One instance for one merge operation. """
 
-    def __init__(self, sf_bulk_connector, objname, bulk_data):
+    def __init__(self, sf_bulk_connector, objname, bulk_data, max_chunk_size):
         self.sf_bulk_connector = sf_bulk_connector
         self.objname = objname
         self.bulk_data = bulk_data
+        self.max_chunk_size = max_chunk_size
 
     def sessionid(self):
         return self.sf_bulk_connector.bulk.sessionid
@@ -46,7 +65,7 @@ class SfSoapMergeWrapper(object):
             current_chunk = {}
             for k,v in self.merge_data.iteritems():
                 current_chunk[k] = v
-                if len(current_chunk) == MAX_CHUNKS_COUNT:
+		if len(current_chunk) == self.max_chunk_size:
                     res = merger.merge(self.objname, current_chunk)
                     rows.extend(res)
                     current_chunk.clear()

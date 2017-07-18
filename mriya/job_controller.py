@@ -1,8 +1,26 @@
+"""
+Copyright (C) 2016-2017 by Yaroslav Litvinov <yaroslav.litvinov@gmail.com>
+and associates (see AUTHORS).
+
+This file is part of Mriya.
+
+Mriya is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Mriya is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Mriya.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 #!/usr/bin/env python
 
 __author__ = "Yaroslav Litvinov"
-__copyright__ = "Copyright 2016, Rackspace Inc."
-__email__ = "yaroslav.litvinov@rackspace.com"
 
 import os
 import time
@@ -236,7 +254,7 @@ class JobController(object):
                     res = conn.bulk_insert(objname, csv_data,
                                            max_batch_size, batch_seq)
                 else:
-                    assert 0
+                    raise Exception("Operation '%s' isn't supported" % opname)
 
                 result_ids = parse_batch_res_data(res)
                
@@ -266,12 +284,13 @@ class JobController(object):
         else:
             objname = job_syntax_item[endpoint]
             conn = self.endpoints.endpoint(endpoint)
+            max_batch_size = int(job_syntax_item[BATCH_SIZE_KEY])
             getLogger(STDOUT).info('EXECUTE: %s %s, lines count=%d',
                                      opname, objname, num_lines-1)
             t_before = time.time()
             if len(csv_data):
                 if opname == OP_MERGE:
-                    res = conn.soap_merge(objname, csv_data)
+                    res = conn.soap_merge(objname, csv_data, max_batch_size)
                 else:
                     raise Exception('App internal error')
                 result_ids = res
