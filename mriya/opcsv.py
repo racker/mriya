@@ -37,15 +37,6 @@ LINETERMINATOR = '\n'
 DOUBLEQUOTE = True
 QUOTING = csv.QUOTE_ALL
 
-def ensure_dir_empty(dirpath):
-    """ remove files from dir """
-    if not os.path.exists(dirpath):
-        os.mkdir(dirpath)
-    for fname in os.listdir(dirpath):
-        fpath = os.path.join(dirpath, fname)
-        if os.path.isfile(fpath):
-            os.remove(fpath)
-
 CsvInfo = namedtuple('CsvInfo', ['writer', 'filepath', 'name', 'file_counter'])
 
 class CsvWriter(object):

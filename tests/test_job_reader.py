@@ -27,6 +27,7 @@ import requests_mock
 import mockers #local
 import sfbulk
 
+import mriya
 import logging
 import os
 from pprint import PrettyPrinter
@@ -257,6 +258,9 @@ def test_job_controller(mock_docall, m):
     mockers.mock_job_controller(mock_docall, m)
     # test itself
     setdatadir(tempfile.mkdtemp())
+    # test debug coverage
+    mriya.log.INITIALIZED_LOGGERS = {}
+    mriya.log.LOGGING_LEVEL = logging.DEBUG
     loginit(__name__)
     print "test_job_controller"
     

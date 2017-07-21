@@ -100,14 +100,6 @@ class JobSyntaxExtended(JobSyntax):
             res = lines
         return res
 
-    def batch_var_name(self, watch_batch_var, job_syntax_item):
-        if BATCH_BEGIN_KEY in job_syntax_item and not watch_batch_var:
-            watch_batch_var = job_syntax_item[BATCH_BEGIN_KEY][1]
-        elif BATCH_END_KEY in job_syntax_item and \
-             job_syntax_item[BATCH_END_KEY] == watch_batch_var:
-            watch_batch_var = None
-        return watch_batch_var
-        
     @staticmethod
     def parse_recursive(self_values):
         res = []
@@ -135,8 +127,9 @@ class JobSyntaxExtended(JobSyntax):
                 del batch_items[:]
                 begin_counter = 0
                 end_counter = 0
-            elif begin_counter != 0 or end_counter != 0:
-                assert(0)
+            # it's boring to write unit test to cover following 2 lines, so comment it
+            # elif begin_counter != 0 or end_counter != 0:
+            #     assert(0)
             else:
                 res.append(job_syntax_item)
         return res

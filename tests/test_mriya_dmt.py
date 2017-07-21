@@ -22,6 +22,7 @@ along with Mriya.  If not, see <http://www.gnu.org/licenses/>.
 
 __author__ = "Yaroslav Litvinov"
 
+import requests_mock
 import tempfile
 import logging
 import os
@@ -43,12 +44,14 @@ from mriya.opexecutor import Executor
 res="info=pen,pineapple,apple,pen\n"
 
 def observer(refname, retcode, stdout):
-    exit0 = ['test_graph', 'test_dmt_yes_no', 'test_macro']
+    exit0 = ['test_graph', 'test_dmt_yes_no', 'test_macro',
+             'test_empty_batch', 'test_empty_merge', 'test_empty_query']
     exit1 = ['test_dmt_bad_param', 'test_batch_param_error',
              'test_assert_type_error', 'test_assert_zero', 'test_assert_nonzero',
              'test_unsupported_csv_prefix', 'test_cant_locate_macro_error',
              'test_transmitter_name_error', 'test_transmitter_value_error',
-             'test_bad_operation_error', 'test_macro_param_error'
+             'test_bad_operation_error', 'test_macro_param_error',
+             'test_batch_type_error', 'test_upsert_unsupported_error',
     ]
     print refname, "retcode=", retcode
     if refname in exit0:
@@ -211,20 +214,53 @@ def test_cant_locate_macro_error():
     executor.execute('test_cant_locate_macro_error', cmd, input_data=stdin_data, output_pipe=True)
     res = executor.poll_for_complete(observer)
     print res
-    
+
 def test_macro():
     create_symbolic_link('tests/dev_stdin')
     executor = Executor(silent_exit=True)
-    stdin_data = """
-=> macro:macro_test:QUERY:SELECT 1:RES_TABLE_NAME:test
+    stdin_data = """=> macro:macro_test:QUERY:SELECT 1:RES_TABLE_NAME:test
 => macro:macro_no_params
 """
     cmd = "python mriya_dmt.py --conf-file test-config.ini --src-name test --dst-name test --job-file tests/dev_stdin --datadir %s" % (tempfile.mkdtemp())
     executor.execute('test_macro', cmd, input_data=stdin_data, output_pipe=True)
     res = executor.poll_for_complete(observer)
     print res
-    
-    
+
+def test_batch_type_error():
+    executor = Executor(silent_exit=True)
+    stdin_data = "SELECT '777' as Id => csv:tmp => dst:insert:Bobject:1:ids => type:puquential"
+    cmd = "python mriya_dmt.py --conf-file test-config.ini --src-name test --dst-name test --job-file /dev/stdin --datadir %s" % (tempfile.mkdtemp())
+    executor.execute('test_batch_type_error', cmd, input_data=stdin_data, output_pipe=True)
+    res = executor.poll_for_complete(observer)
+    print res
+
+def test_empty_batch():
+    executor = Executor(silent_exit=True)
+    stdin_data = """
+SELECT i as Id FROM csv.ints10000 WHERE i<0 => csv:tmp => dst:insert:Bobject:1:ids"""
+    cmd = "python mriya_dmt.py --conf-file test-config.ini --src-name test --dst-name test --job-file /dev/stdin --datadir %s" % (tempfile.mkdtemp())
+    executor.execute('test_empty_batch', cmd, input_data=stdin_data, output_pipe=True)
+    res = executor.poll_for_complete(observer)
+    print res
+
+def test_empty_merge():
+    executor = Executor(silent_exit=True)
+    stdin_data = """
+SELECT i as MasterRecordId, i as MergeRecordId FROM csv.ints10000 WHERE i<0 => csv:tmp \
+=> dst:merge:Bobject:1:ids"""
+    cmd = "python mriya_dmt.py --conf-file test-config.ini --src-name test --dst-name test --job-file /dev/stdin --datadir %s" % (tempfile.mkdtemp())
+    executor.execute('test_empty_merge', cmd, input_data=stdin_data, output_pipe=True)
+    res = executor.poll_for_complete(observer)
+    print res
+
+def test_empty_query():
+    executor = Executor(silent_exit=True)
+    stdin_data = "=> csv:test"
+    cmd = "python mriya_dmt.py --conf-file test-config.ini --src-name test --dst-name test --job-file /dev/stdin --datadir %s" % (tempfile.mkdtemp())
+    executor.execute('test_empty_query', cmd, input_data=stdin_data, output_pipe=True)
+    res = executor.poll_for_complete(observer)
+    print res
+
 if __name__ == '__main__':
     loginit(__name__)
     test_dmt_bad_param()

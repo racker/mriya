@@ -71,8 +71,6 @@ def loginit(name, log_to=None):
         defaultlog()
         return
 
-    if not file_handler:
-        return
     file_handler.setFormatter(logging.Formatter(log_format))
     logger = logging.getLogger(name)
     logger.setLevel(LOGGING_LEVEL)

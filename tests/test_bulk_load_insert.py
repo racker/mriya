@@ -27,6 +27,7 @@ import requests_mock
 import mockers #local
 import sfbulk
 
+import tempfile
 import logging
 import sys
 import pprint
@@ -43,6 +44,9 @@ from mriya.bulk_data import csv_from_bulk_data
 from mriya.bulk_data import BulkData
 from mriya.log import loginit
 from mriya import sf_bulk_connector
+from mockers import mock_oauth, mock_login
+from mriya_dmt import run_job_from_file    
+from mriya.sql_executor import setdatadir
 
 SF_NULL_VALUE = '#N/A'
 config_file = 'test-config.ini'
@@ -98,13 +102,7 @@ def fetch_records_by_returned_ids(conn, result_ids, columns):
     selected = parse_batch_res_data(csv_rows)
     return selected
 
-@mock.patch.object(sfbulk.callout.Callout, 'docall')
-@requests_mock.Mocker()
-def test_insert_load(mock_docall, m):
-    # mock setup
-    sf_bulk_connector.JOB_CHECK_TIMER = 0    
-    mockers.mock_insert_load(mock_docall, m)
-    # test itself
+def setup():
     loginit(__name__)
     config = ConfigParser()
     with open(config_file, 'r') as conf_file:
@@ -113,8 +111,15 @@ def test_insert_load(mock_docall, m):
     sessions_file_name = config[DEFAULT_SETTINGS_SECTION][SESSIONS_SETTING]
     with open(sessions_file_name, 'w') as sessions_f:
         sessions_f.write('{"someuser": "someaccesstoken"}')
-        
-    conn = create_bulk_connector(config, 'test')
+    return config
+
+@mock.patch.object(sfbulk.callout.Callout, 'docall')
+@requests_mock.Mocker()
+def test_insert_load(mock_docall, m):
+    # mock setup
+    sf_bulk_connector.JOB_CHECK_TIMER = 0    
+    mockers.mock_insert_load(mock_docall, m)
+    conn = create_bulk_connector(setup(), 'test')
 
     ####### INSERT #####
     csv_data = TEST_CSV_INSERT
@@ -141,12 +146,8 @@ def test_insert_update(mock_docall, m):
     # mock setup    
     sf_bulk_connector.JOB_CHECK_TIMER = 0
     mockers.mock_insert_update(mock_docall, m)
-    # test itself
-    loginit(__name__)
-    config = ConfigParser()
-    with open(config_file, 'r') as conf_file:
-        config.read_file(conf_file)
 
+    config = setup()
     # test case when sessions file doesn't exist
     sessions_file_name = config[DEFAULT_SETTINGS_SECTION][SESSIONS_SETTING]
     remove(sessions_file_name)
@@ -191,6 +192,39 @@ def test_insert_update(mock_docall, m):
         print "selected_update", selected_update
         raise
 
+
+@requests_mock.Mocker()
+def test_upsert_unsupported(m):
+    mock_oauth(m)
+    mock_login(m)
+    setdatadir(tempfile.mkdtemp())
+    with open(config_file) as conf_file:
+        with open('tests/upsert_unsupported.sql') as job_file:
+            try:
+                run_job_from_file(conf_file, job_file,
+                                  {'src':'test', 'dst':'test'}, {}, None, None)
+                # it should fail
+                assert(0)
+            except SystemExit:
+                pass
+
+@requests_mock.Mocker()
+def test_delete_syntax(m):
+    # this delete operation should fail anyway but improves coverage
+    mock_oauth(m)
+    mock_login(m)
+    setdatadir(tempfile.mkdtemp())
+    with open(config_file) as conf_file:
+        with open('tests/delete_fake.sql') as job_file:
+            try:
+                run_job_from_file(conf_file, job_file,
+                                  {'src':'test', 'dst':'test'}, {}, None, None)
+                # it should fail
+                assert(0)
+            except:
+                pass
+
+            
 if __name__ == '__main__':
     test_insert_update()
     test_insert_load()
