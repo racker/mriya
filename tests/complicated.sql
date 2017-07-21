@@ -43,3 +43,7 @@ SELECT i as batch_value FROM csv.ints10000 LIMIT 10 \
 SELECT '{BATCH_VAR}' => var:info:publish
 
 => batch_end:BATCH_VAR
+
+-- asserts testing
+SELECT 0 => var:TEST_OK0 => assert:zero
+SELECT 1 => var:TEST_OK1 => assert:nonzero

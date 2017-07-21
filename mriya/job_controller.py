@@ -37,7 +37,7 @@ from mriya.salesforce_executor import SalesforceExecutor
 from mriya.data_connector import create_bulk_connector
 from mriya.bulk_data import csv_from_bulk_data, parse_batch_res_data
 from mriya.bulk_data import BulkData
-from mriya.job_syntax_extended import JobSyntaxExtended, BATCH_KEY
+from mriya.job_syntax_extended import BATCH_KEY
 from mriya.sf_merge import SoapMerge
 from mriya.config import *
 
@@ -225,7 +225,8 @@ class JobController(object):
             elif job_syntax_item[BATCH_TYPE_KEY] == BATCH_TYPE_SEQUENTIAL_KEY:
                 batch_seq = True
             else:
-                raise Exception('Unknown batch type: %s', job_syntax_item[BATCH_TYPE_KEY])
+                getLogger(STDERR).error('Unknown batch type: %s', job_syntax_item[BATCH_TYPE_KEY])
+                exit(1)
         else:
             batch_seq = False # parallel by default
         csv_filename = SqlExecutor.csv_name(job_syntax_item[CSV_KEY])
@@ -254,7 +255,8 @@ class JobController(object):
                     res = conn.bulk_insert(objname, csv_data,
                                            max_batch_size, batch_seq)
                 else:
-                    raise Exception("Operation '%s' isn't supported" % opname)
+                    getLogger(STDERR).error("Operation '%s' isn't supported" % opname)
+                    exit(1)
 
                 result_ids = parse_batch_res_data(res)
                

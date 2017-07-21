@@ -42,8 +42,14 @@ production = True/False
 * Provide config file as well as corresponding endpoints:<br>
 ```--conf-file config.ini --src-name 'OLD ENDPOINT' --dst-name 'NEW ENDPOINT'```
 * Specify one or several jobs:<br>
-```--job path/to/some_file1.sql --job path/to/some_file2.sql```
-* Explicit defining of data path param is a good practice:<br>
+```--job path/to/some_file1.sql --job path/to/some_file2.sql
+```
+* You can also provide a job as stdin data, for example:<br>
+```echo "
+SELECT 'a' as hero => csv:test
+SELECT * FROM csv.test => var:TEST_VAR:publish" | python mriya_dmt.py --job-file /dev/stdin ...```
+
+* Define data path as cmd line param, providing of absolute paths could be a good practice:<br>
 ```--datadir some/data/path```
 
 * Tests<br>
@@ -166,4 +172,13 @@ example of resulted Merge_dst_Account_res_ids.csv:
 Id,Success,StatusCode,Message
 "0016100000M94ppAAB","false","ENTITY_IS_DELETED","entity is deleted"
 "0016100000M94ppAAA","true","",""
+```
+
+Assertion of variable's value. Assert val=0 and val!=0 correspondingly:
+```csv
+--Assert VAR1=0, will raise exception if VAR1 is not 0
+SELECT count() FROM csv.test => var:VAR1:publish => assert:zero
+
+--Assert VAR2!=0, will raise exception if VAR2 is 0
+SELECT count() FROM csv.test => var:VAR2:publish => assert:nonzero
 ```

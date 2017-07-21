@@ -80,8 +80,9 @@ class JobSyntaxExtended(JobSyntax):
         for lst in self.values_extended:
             yield lst
 
-    def __getitem__(self, idx):
-        return self.values_extended[idx]
+    # not used
+    # def __getitem__(self, idx):
+    #     return self.values_extended[idx]
 
     def items(self):
         return self.values_extended

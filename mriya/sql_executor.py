@@ -27,7 +27,8 @@ import re
 from logging import getLogger
 from mriya.job_syntax import JobSyntax, CSV_KEY, QUERY_KEY
 from mriya.job_syntax import DST_KEY, SRC_KEY, PUBLISH_KEY
-from mriya.log import loginit, LOG, STDOUT, MOREINFO
+from mriya.job_syntax import ASSERT_KEY, ASSERT_ZERO, ASSERT_NONZERO
+from mriya.log import loginit, LOG, STDOUT, STDERR, MOREINFO
 
 # real data path must be set dynamically
 DATADIRNAME = None
@@ -96,6 +97,21 @@ class SqlExecutor(object):
         getLogger(LOG).info("set var: %s=%s", key, value)
         if PUBLISH_KEY in self.job_syntax_item:
             getLogger(STDOUT).info("%s=%s", key, value)
+        if ASSERT_KEY in self.job_syntax_item:
+            assert_type = self.job_syntax_item[ASSERT_KEY]
+            if assert_type == ASSERT_ZERO:
+                if int(value) != 0:
+                    getLogger(STDERR).error('Assert 0: %s variable value %s should be 0' % \
+                                            (key, value))
+                    exit(1)
+            elif assert_type == ASSERT_NONZERO:
+                if int(value) == 0:
+                    getLogger(STDERR).error('Assert non 0: %s variable value should not be 0' \
+                                            % (key))
+                    exit(1)
+            else:
+                getLogger(STDERR).error('Bad assertion type: %s' % (assert_type))
+                exit(1)
 
     @staticmethod
     def get_sub_str_between(query, start_str, end_str):
