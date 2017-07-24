@@ -52,6 +52,7 @@ def observer(refname, retcode, stdout):
              'test_transmitter_name_error', 'test_transmitter_value_error',
              'test_bad_operation_error', 'test_macro_param_error',
              'test_batch_type_error', 'test_upsert_unsupported_error',
+             'test_merge_wrong_object_error'
     ]
     print refname, "retcode=", retcode
     if refname in exit0:
@@ -261,6 +262,19 @@ def test_empty_query():
     res = executor.poll_for_complete(observer)
     print res
 
+# def test_merge_wrong_object_error():
+#     executor = Executor(silent_exit=True)
+#     stdin_data = """
+# SELECT '098734658690938726' as MasterRecordId, '256345634690938726' as MasterRecordId \
+# => csv:MergeData \
+# => dst:merge:Accounts__c:100:resids
+# """
+#     cmd = "python mriya_dmt.py --conf-file test-config.ini --src-name test --dst-name test --job-file /dev/stdin --datadir %s" % (tempfile.mkdtemp())
+#     executor.execute('test_merge_wrong_object_error', cmd, input_data=stdin_data, output_pipe=True)
+#     res = executor.poll_for_complete(observer)
+#     print res
+
+    
 if __name__ == '__main__':
     loginit(__name__)
     test_dmt_bad_param()

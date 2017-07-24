@@ -209,6 +209,67 @@ def test_upsert_unsupported(m):
                 pass
 
 @requests_mock.Mocker()
+def test_merge_morethan_three_error(m):
+    mock_oauth(m)
+    mock_login(m)
+    setdatadir(tempfile.mkdtemp())
+    with open(config_file) as conf_file:
+        with open('tests/merge_more_than_three_error.sql') as job_file:
+            try:
+                run_job_from_file(conf_file, job_file,
+                                  {'src':'test', 'dst':'test'}, {}, None, None)
+                # it should fail
+                assert(0)
+            except SystemExit:
+                pass
+
+@requests_mock.Mocker()
+def test_merge_bad_ids_error(m):
+    mock_oauth(m)
+    mock_login(m)
+    setdatadir(tempfile.mkdtemp())
+    with open(config_file) as conf_file:
+        with open('tests/merge_bad_ids_errorr.sql') as job_file:
+            try:
+                run_job_from_file(conf_file, job_file,
+                                  {'src':'test', 'dst':'test'}, {}, None, None)
+                # it should fail
+                assert(0)
+            except SystemExit:
+                pass 
+            
+@requests_mock.Mocker()
+def test_merge_required_columns_error(m):
+    mock_oauth(m)
+    mock_login(m)
+    setdatadir(tempfile.mkdtemp())
+    with open(config_file) as conf_file:
+        with open('tests/merge_required_columns_error.sql') as job_file:
+            try:
+                run_job_from_file(conf_file, job_file,
+                                  {'src':'test', 'dst':'test'}, {}, None, None)
+                # it should fail
+                assert(0)
+            except SystemExit:
+                pass 
+            
+@requests_mock.Mocker()
+def test_merge_bad_ascii_error(m):
+    mock_oauth(m)
+    mock_login(m)
+    setdatadir(tempfile.mkdtemp())
+    with open(config_file) as conf_file:
+        with open('tests/merge_bad_ascii.sql') as job_file:
+            try:
+                run_job_from_file(conf_file, job_file,
+                                  {'src':'test', 'dst':'test'}, {}, None, None)
+                # it should fail
+                assert(0)
+            except UnicodeEncodeError:
+                pass 
+            
+            
+@requests_mock.Mocker()
 def test_delete_syntax(m):
     # this delete operation should fail anyway but improves coverage
     mock_oauth(m)

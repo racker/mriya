@@ -40,7 +40,7 @@ class SfSoapMergeWrapper(object):
         self.sf_bulk_connector = sf_bulk_connector
         self.objname = objname
         self.bulk_data = bulk_data
-        self.max_chunk_size = max_chunk_size
+        self.max_chunk_size = min(max_chunk_size, MAX_CHUNKS_COUNT)
 
     def sessionid(self):
         return self.sf_bulk_connector.bulk.sessionid
@@ -60,37 +60,29 @@ class SfSoapMergeWrapper(object):
    
     def run_merge(self):
         merger = SoapMerge(self.instance_url(), self.sessionid())
-        if self.merge_data:
-            rows = []
-            current_chunk = {}
-            for k,v in self.merge_data.iteritems():
-                current_chunk[k] = v
-		if len(current_chunk) == self.max_chunk_size:
-                    res = merger.merge(self.objname, current_chunk)
-                    rows.extend(res)
-                    current_chunk.clear()
-            res = merger.merge(self.objname, current_chunk)
-            rows.extend(res)
-            bulk_data = BulkData(fields=HEADER, rows = rows)
-        else:
-            bulk_data = BulkData(fields=HEADER, rows = [])
+        rows = []
+        current_chunk = {}
+        for k,v in self.merge_data.iteritems():
+            current_chunk[k] = v
+	    if len(current_chunk) == self.max_chunk_size:
+                res = merger.merge(self.objname, current_chunk)
+                rows.extend(res)
+                current_chunk.clear()
+        res = merger.merge(self.objname, current_chunk)
+        rows.extend(res)
+        bulk_data = BulkData(fields=HEADER, rows = rows)
         return bulk_data
 
     #HELPERS:
 
-    @staticmethod    
-    def chunks(l, n):
-        """Yield successive n-sized chunks from l."""
-        for i in xrange(0, len(l), n):
-            yield l[i:i + n]
-    
     @staticmethod
     def isvalidid(iddata):
         err = 0
-        try:
-            iddata.decode('ascii')
-        except UnicodeDecodeError:
-            err = 1
+        # don't handle possible exception as it should be handled before when reading csv
+        #try:
+        iddata.decode('ascii')
+        #except UnicodeDecodeError:
+        #    err = 1
         if (len(iddata) == 15 or len(iddata) == 18) and not err:
             return True
         return False
@@ -111,7 +103,7 @@ class SfSoapMergeWrapper(object):
             mergerecid = pair[merge_idx]
             if not (SfSoapMergeWrapper.isvalidid(masterrecid) and \
                     SfSoapMergeWrapper.isvalidid(mergerecid)):
-                msg = 'Error: Invalid Salesforce rec ids %s are provided for merge' % (pair)
+                msg = 'Error: Invalid Salesforce rec ids %s are provided for merge' % (str(pair))
                 getLogger(STDERR).error(msg)
                 return None
             if masterrecid not in mergedict:

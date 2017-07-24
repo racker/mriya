@@ -21,6 +21,8 @@ along with Mriya.  If not, see <http://www.gnu.org/licenses/>.
 import requests
 from collections import namedtuple
 from sfbulk.utils_xml import parseXMLResultList
+from logging import getLogger
+from log import STDERR
 
 MergeData = namedtuple('MergeData', ['MasterRecordId', 'MergeRecordId'] )
 
@@ -79,13 +81,6 @@ class SoapException(Exception):
         if detail:
             self.detail = detail
 
-    def get_detail(self):
-        return self.detail or self.default_detail
-
-    def __str__(self):
-        return self.get_detail()
-
-
 class SoapMerge(object):
     """Standard enterprise objects merge"""
 
@@ -123,13 +118,12 @@ class SoapMerge(object):
             sessionid=self.sessionid,
             mergerequest=mergerequest)
 
-        print merge_soap_request_body
+        getLogger(STDERR).debug(merge_soap_request_body)
         response = self._send_merge_request(self.soap_url, merge_soap_request_body)
-        print response.content        
+        getLogger(STDERR).debug(response.content)
         rows_res = self._parse_merge_results(self._get_check_result(response))
-        print rows_res
+        getLogger(STDERR).debug(rows_res)
         return self._get_ordered_results(keys_to_save_order, rows_res)
-        return res
         
     # HELPERS
 
@@ -178,6 +172,7 @@ class SoapMerge(object):
             return [res]
 
     def _send_merge_request(self, soap_url, merge_soap_request_body):
+        getLogger(STDERR).debug(soap_url)
         return requests.post(soap_url,
                              merge_soap_request_body,
                              headers=MERGE_SOAP_REQUEST_HEADERS)
