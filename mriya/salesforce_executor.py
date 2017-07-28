@@ -29,6 +29,7 @@ from mriya.job_syntax import QUERY_KEY, OBJNAME_KEY, CSV_KEY, VAR_KEY
 from mriya.job_syntax import CONST_KEY, DST_KEY, SRC_KEY, FROM_KEY
 from mriya import bulk_data
 from mriya.log import loginit, STDOUT
+from mriya.sql_executor import var_replaced
 
 EMPTY_SF_RESPONSE = 'Records not found for this query'
 
@@ -72,7 +73,7 @@ class SalesforceExecutor(SqlExecutor):
         getLogger(STDOUT).info('SF Took time: %.2f' % (t_after-t_before))
         retcode = 0
         return retcode
-
+ 
     def handle_result(self, bulk_res):
         # handle empty result - fix it by adding column names
         if bulk_res and bulk_res[0] == EMPTY_SF_RESPONSE:
@@ -86,7 +87,8 @@ class SalesforceExecutor(SqlExecutor):
 
         # handle result
         if CSV_KEY in self.job_syntax_item:
-            csvfname = SqlExecutor.csv_name(self.job_syntax_item[CSV_KEY])
+            csv_key_val = var_replaced(self.variables, self.job_syntax_item, CSV_KEY)
+            csvfname = SqlExecutor.csv_name(csv_key_val)
             bulk_data.save_escape_csv_lines_as_csv_file(csvfname, bulk_res)
         elif VAR_KEY in self.job_syntax_item:
             res = bulk_data.parse_batch_res_data(bulk_res)

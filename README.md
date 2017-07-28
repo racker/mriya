@@ -140,7 +140,7 @@ SELECT 'hello' => var:VAR1 \
 ```
 
 example of macro file:
-```
+```sql
 -- {PARAM1}, {PARAM2} will be substituted by param value param_value_no_spaces
 -- {VAR1} will be substituted by var value
 SELECT {PARAM1}, '{VAR1}' as hello, ID FROM csv.table => csv:{PARAM2}_some_string
@@ -175,10 +175,25 @@ Id,Success,StatusCode,Message
 ```
 
 Assertion of variable's value. Assert val=0 and val!=0 correspondingly:
-```csv
+```sql
 --Assert VAR1=0, will raise exception if VAR1 is not 0
 SELECT count() FROM csv.test => var:VAR1:publish => assert:zero
 
 --Assert VAR2!=0, will raise exception if VAR2 is 0
 SELECT count() FROM csv.test => var:VAR2:publish => assert:nonzero
+```
+
+Limited support of variables added for using outside of queries, after '=>' specified.
+Variable can be used with 'csv' key only, like '=> csv:csv_{VARIABLE}_csv', for this case
+variable name will be substituted by it's value.
+For any other keys variable shouldn't be used outside of query and will be ignored.
+```sql
+SELECT 'May the force be with you' => var:VARIABLE
+SELECT '1' as fieldname => csv:csv_{VARIABLE}_csv
+-- it's will be translated into
+-- SELECT '1' as fieldname => csv:csv_May the force be with you_csv
+
+SELECT 'var1' => var:VAR1
+SELECT '' => var:{VAR1}
+-- you will get 2 vars: VAR1=var1, {VAR1}=''
 ```

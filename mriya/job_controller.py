@@ -31,7 +31,7 @@ from mriya import sql_executor
 from mriya.log import loginit, LOG, STDOUT
 from mriya.job_syntax import *
 from mriya.opexecutor import Executor
-from mriya.sql_executor import SqlExecutor
+from mriya.sql_executor import SqlExecutor, var_replaced
 from mriya.sqlite_executor import SqliteExecutor
 from mriya.salesforce_executor import SalesforceExecutor
 from mriya.data_connector import create_bulk_connector
@@ -112,9 +112,10 @@ class JobController(object):
                 return
             getLogger(LOG).info(job_syntax_item)
             if not is_var and is_csv and is_cache:
-                csv_name = SqlExecutor.csv_name(job_syntax_item[CSV_KEY])
-                csv_size = SqlExecutor.csv_size(job_syntax_item[CSV_KEY])
-                if csv_size and SqlExecutor.valid_csv_exist(job_syntax_item[CSV_KEY]):
+                csv_key_val = var_replaced(self.variables, job_syntax_item, CSV_KEY)
+                csv_name = SqlExecutor.csv_name(csv_key_val)
+                csv_size = SqlExecutor.csv_size(csv_key_val)
+                if csv_size and SqlExecutor.valid_csv_exist(csv_key_val):
                     getLogger(LOG).info(
                         "SKIP query: '%s', csvfile exist: %s",
                         query, csv_name)
@@ -217,7 +218,8 @@ class JobController(object):
                 exit(1)
         else:
             batch_seq = False # parallel by default
-        csv_filename = SqlExecutor.csv_name(job_syntax_item[CSV_KEY])
+        csv_key_val = var_replaced(self.variables, job_syntax_item, CSV_KEY)
+        csv_filename = SqlExecutor.csv_name(csv_key_val)
         csv_data = self.csvdata(csv_filename)
         num_lines = len(csv_data)
         # do nothing for empty data set
@@ -263,7 +265,8 @@ class JobController(object):
 
     def handle_transmitter_merge(self, job_syntax_item, endpoint):
         opname = job_syntax_item[OP_KEY]
-        csv_filename = SqlExecutor.csv_name(job_syntax_item[CSV_KEY])
+        csv_key_val = var_replaced(self.variables, job_syntax_item, CSV_KEY)        
+        csv_filename = SqlExecutor.csv_name(csv_key_val)
         csv_data = self.csvdata(csv_filename)
         num_lines = len(csv_data)
         # do nothing for empty data set

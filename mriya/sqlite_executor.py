@@ -35,6 +35,7 @@ from mriya.job_syntax import CONST_KEY, DST_KEY, SRC_KEY
 from mriya.opexecutor import Executor
 from mriya.bulk_data import get_bulk_data_from_csv_stream
 from mriya.log import loginit, ismoreinfo, STDOUT, LOG, MOREINFO
+from mriya.sql_executor import var_replaced
 
 SQLITE_SCRIPT_FMT='.mode csv\n\
 .separator ","\n\
@@ -96,7 +97,7 @@ class SqliteExecutor(SqlExecutor):
                     .format(csv=self.csv_name(table_name), name=table_name)
         output = ''
         if CSV_KEY in self.job_syntax_item:
-            table_name = self.job_syntax_item[CSV_KEY]
+            table_name = var_replaced(variables, self.job_syntax_item, CSV_KEY)
             output += ".headers on\n"
             output += ".output {csv}\n"\
                 .format(csv=self.csv_name(table_name))
@@ -137,7 +138,8 @@ class SqliteExecutor(SqlExecutor):
         t_after = time.time()
         csvname = ''
         if CSV_KEY in self.job_syntax_item:
-            csvname = self.job_syntax_item[CSV_KEY]
+            csvname = var_replaced(
+                self.variables, self.job_syntax_item, CSV_KEY)            
             self.fix_empty_res_table(csvname)
             if ismoreinfo():
                 getLogger(MOREINFO).info('%s.csv - %.2fs' % (csvname, t_after-t_before))

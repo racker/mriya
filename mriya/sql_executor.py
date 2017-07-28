@@ -40,6 +40,11 @@ def setdatadir(datadir):
 def datadir():
     return DATADIRNAME
 
+def var_replaced(variables, job_syntax_item, key):
+    """ Get job syntax item's value. If value is variable then replace by var value and return """
+    val = job_syntax_item[key]
+    return SqlExecutor.prepare_query_put_vars(val, variables)
+
 class SqlExecutor(object):
     def __init__(self, job_syntax_item, variables):
         self.job_syntax_item = job_syntax_item
@@ -73,10 +78,11 @@ class SqlExecutor(object):
 
     def saved_csv(self):
         if CSV_KEY in self.job_syntax_item:
-            name = self.job_syntax_item[CSV_KEY]
+            csv_key_val = var_replaced(
+                self.variables, self.job_syntax_item, CSV_KEY)
             getLogger(MOREINFO).info('Saved csv: %s, size: %d',
-                                   self.csv_name(name),
-                                   self.csv_size(name))
+                                   self.csv_name(csv_key_val),
+                                   self.csv_size(csv_key_val))
 
     @staticmethod
     def get_query_var_names(query):
