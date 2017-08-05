@@ -57,8 +57,10 @@ def observer(refname, retcode, stdout):
     print refname, "retcode=", retcode
     if refname in exit0:
         assert retcode == 0
+        print stdout.read()
     if refname in exit1:
         assert retcode == 1
+        print stdout.read()
     elif refname == 'test_dmt':
         assert retcode == 0 
         assert stdout.readlines()[-1] == res
@@ -71,7 +73,7 @@ def create_symbolic_link(name):
     executor.execute('test_dmt_yes_no', cmd, input_data=None, output_pipe=False)
         
 def test_dmt():
-    create_symbolic_link('tests/dev_stdin')
+    create_symbolic_link('tests/sql/dev_stdin')
     executor = Executor()
     stdin_data = """
 SELECT "SELECT 'pen' as field1, 'pineapple' as field2, 'apple' as field3, 'pen' as field4" => var:QUERY => const:
@@ -87,7 +89,7 @@ SELECT fake FROM dst.fake2 => csv:aggregation_test:cache
 
 SELECT * FROM csv.test_fields_table => var:info:publish
 """
-    cmd = "python mriya_dmt.py --conf-file test-config.ini --src-name 'foo1' --dst-name 'foo2' --job-file tests/dev_stdin --datadir %s" % (tempfile.mkdtemp())
+    cmd = "python mriya_dmt.py --conf-file test-config.ini --src-name 'foo1' --dst-name 'foo2' --job-file tests/sql/dev_stdin --datadir %s" % (tempfile.mkdtemp())
     executor.execute('test_dmt', cmd, input_data=stdin_data, output_pipe=True)
     res = executor.poll_for_complete(observer)
     print res
@@ -100,7 +102,7 @@ n
 
 """
     executor = Executor()
-    cmd = "python mriya_dmt.py --conf-file test-config.ini --step-by-step --src-name 'foo1' --dst-name 'foo2' --job-file tests/test.sql --datadir %s" % (tempfile.mkdtemp())
+    cmd = "python mriya_dmt.py --conf-file test-config.ini --step-by-step --src-name 'foo1' --dst-name 'foo2' --job-file tests/sql/test.sql --datadir %s" % (tempfile.mkdtemp())
     executor.execute('test_dmt_yes_no', cmd, input_data=answers, output_pipe=True)
     res = executor.poll_for_complete(observer)
     print res
@@ -113,7 +115,7 @@ def run_test_graph(datadir, sqlfpath):
     graphpath = 'tests/test_graph'
     graphdir = os.path.dirname(graphpath)
     relative_path = os.path.relpath(tempfile.mkdtemp(), graphdir)
-    cmd = "python graph_dmt.py --conf-file test-config.ini --job-file %s --job-file tests/test2.sql --save-graph %s --csvdir %s" % (sqlfpath, graphpath, relative_path)
+    cmd = "python graph_dmt.py --conf-file test-config.ini --job-file %s --job-file tests/sql/test2.sql --save-graph %s --csvdir %s" % (sqlfpath, graphpath, relative_path)
     print relative_path
     executor.execute('test_graph', cmd, input_data=None, output_pipe=True)
     res = executor.poll_for_complete(observer)
@@ -149,8 +151,6 @@ def test_assert_type_error():
     cmd = "python mriya_dmt.py --conf-file test-config.ini --src-name 'foo1' --dst-name 'foo2' --job-file /dev/stdin --datadir %s" % (tempfile.mkdtemp())
     executor.execute('test_assert_type_error', cmd, input_data=stdin_data, output_pipe=True)
     res = executor.poll_for_complete(observer)
-    print res
-
     
 def test_unsupported_csv_prefix():
     executor = Executor(silent_exit=True)
@@ -217,12 +217,12 @@ def test_cant_locate_macro_error():
     print res
 
 def test_macro():
-    create_symbolic_link('tests/dev_stdin')
+    create_symbolic_link('tests/sql/dev_stdin')
     executor = Executor(silent_exit=True)
     stdin_data = """=> macro:macro_test:QUERY:SELECT 1:RES_TABLE_NAME:test
 => macro:macro_no_params
 """
-    cmd = "python mriya_dmt.py --conf-file test-config.ini --src-name test --dst-name test --job-file tests/dev_stdin --datadir %s" % (tempfile.mkdtemp())
+    cmd = "python mriya_dmt.py --conf-file test-config.ini --src-name test --dst-name test --job-file tests/sql/dev_stdin --datadir %s" % (tempfile.mkdtemp())
     executor.execute('test_macro', cmd, input_data=stdin_data, output_pipe=True)
     res = executor.poll_for_complete(observer)
     print res

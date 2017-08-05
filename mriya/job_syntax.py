@@ -271,6 +271,6 @@ class JobSyntax(object):
                     values[REPLACE_KEY][key] = val
         else:
             print key, val
-            assert(0)
+            raise Exception("Key '%s' is missing" % (key))
         return values
 

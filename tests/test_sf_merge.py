@@ -125,7 +125,7 @@ def test_mocked_merge2(m):
     config_filename = 'test-config.ini'
     endpoint_names = {'dst': 'test', 'src': 'test'}
     with open(config_filename) as config_f:
-        with open('tests/merge.sql') as job_f:
+        with open('tests/sql/merge.sql') as job_f:
             run_job_from_file(config_f, job_f, endpoint_names, {}, False, False)
 
 @requests_mock.Mocker()    
@@ -156,7 +156,7 @@ def test_mocked_merge_error(m):
     config_filename = 'test-config.ini'
     endpoint_names = {'dst': 'test', 'src': 'test'}
     with open(config_filename) as config_f:
-        with open('tests/merge.sql') as job_f:
+        with open('tests/sql/merge.sql') as job_f:
             try:
                 run_job_from_file(config_f, job_f, endpoint_names, {}, False, False)
                 # expected to fail

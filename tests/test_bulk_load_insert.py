@@ -118,7 +118,7 @@ def setup():
 def test_insert_load(mock_docall, m):
     # mock setup
     sf_bulk_connector.JOB_CHECK_TIMER = 0    
-    mockers.mock_insert_load(mock_docall, m)
+    mockers.mock_insert_load_delete(mock_docall, m)
     conn = create_bulk_connector(setup(), 'test')
 
     ####### INSERT #####
@@ -126,7 +126,8 @@ def test_insert_load(mock_docall, m):
     bulk_result_ids = conn.bulk_insert('Account', csv_data, 1000, False)
     # Retrieve ids of inserted results
     result_ids = parse_batch_res_data(bulk_result_ids)
-
+    print "result_ids", result_ids
+    
     ###### SELECT #####
     selected = fetch_records_by_returned_ids(
         conn, result_ids, "Name,Account_Birthday__c,Billing_Address__c,type")
@@ -139,6 +140,16 @@ def test_insert_load(mock_docall, m):
         print "selected", selected
         print "expected", expected
         raise
+    
+    ###### DELETE #####
+    delid = result_ids.rows[0][0]
+    csv_delete_data = '"Id"\n"%s"' % (delid)
+    del_result_ids = conn.bulk_delete('Account', csv_delete_data, 100, False)
+    # Retrieve ids of inserted results
+    del_ids = parse_batch_res_data(del_result_ids)
+    expected_del_res = BulkData(fields=['Id', 'Success', 'Created', 'Error'],
+                            rows=[(delid, u'true', u'false', u'')])
+    assert_equality(expected_del_res, del_ids)
 
 @mock.patch.object(sfbulk.callout.Callout, 'docall')
 @requests_mock.Mocker()
@@ -199,7 +210,7 @@ def test_upsert_unsupported(m):
     mock_login(m)
     setdatadir(tempfile.mkdtemp())
     with open(config_file) as conf_file:
-        with open('tests/upsert_unsupported.sql') as job_file:
+        with open('tests/sql/upsert_unsupported.sql') as job_file:
             try:
                 run_job_from_file(conf_file, job_file,
                                   {'src':'test', 'dst':'test'}, {}, None, None)
@@ -214,7 +225,7 @@ def test_merge_morethan_three_error(m):
     mock_login(m)
     setdatadir(tempfile.mkdtemp())
     with open(config_file) as conf_file:
-        with open('tests/merge_more_than_three_error.sql') as job_file:
+        with open('tests/sql/merge_more_than_three_error.sql') as job_file:
             try:
                 run_job_from_file(conf_file, job_file,
                                   {'src':'test', 'dst':'test'}, {}, None, None)
@@ -229,7 +240,7 @@ def test_merge_bad_ids_error(m):
     mock_login(m)
     setdatadir(tempfile.mkdtemp())
     with open(config_file) as conf_file:
-        with open('tests/merge_bad_ids_errorr.sql') as job_file:
+        with open('tests/sql/merge_bad_ids_errorr.sql') as job_file:
             try:
                 run_job_from_file(conf_file, job_file,
                                   {'src':'test', 'dst':'test'}, {}, None, None)
@@ -244,7 +255,7 @@ def test_merge_required_columns_error(m):
     mock_login(m)
     setdatadir(tempfile.mkdtemp())
     with open(config_file) as conf_file:
-        with open('tests/merge_required_columns_error.sql') as job_file:
+        with open('tests/sql/merge_required_columns_error.sql') as job_file:
             try:
                 run_job_from_file(conf_file, job_file,
                                   {'src':'test', 'dst':'test'}, {}, None, None)
@@ -259,7 +270,7 @@ def test_merge_bad_ascii_error(m):
     mock_login(m)
     setdatadir(tempfile.mkdtemp())
     with open(config_file) as conf_file:
-        with open('tests/merge_bad_ascii.sql') as job_file:
+        with open('tests/sql/merge_bad_ascii.sql') as job_file:
             try:
                 run_job_from_file(conf_file, job_file,
                                   {'src':'test', 'dst':'test'}, {}, None, None)
@@ -276,7 +287,7 @@ def test_delete_syntax(m):
     mock_login(m)
     setdatadir(tempfile.mkdtemp())
     with open(config_file) as conf_file:
-        with open('tests/delete_fake.sql') as job_file:
+        with open('tests/sql/delete_fake.sql') as job_file:
             try:
                 run_job_from_file(conf_file, job_file,
                                   {'src':'test', 'dst':'test'}, {}, None, None)
@@ -285,6 +296,52 @@ def test_delete_syntax(m):
             except:
                 pass
 
+@mock.patch.object(sfbulk.callout.Callout, 'docall')
+@requests_mock.Mocker()
+def test_empty_query_res(mock_docall, m):
+    # mock setup    
+    mock_oauth(m)
+    mock_login(m)
+    sf_bulk_connector.JOB_CHECK_TIMER = 0
+    mockers.mock_empty_query_res(mock_docall, m)
+    
+    setdatadir(tempfile.mkdtemp())
+    with open(config_file) as conf_file:
+        with open('tests/sql/empty_query_res.sql') as job_file:
+            run_job_from_file(conf_file, job_file,
+                              {'src':'test', 'dst':'test'}, {}, None, None)
+
+@mock.patch.object(sfbulk.callout.Callout, 'docall')
+@requests_mock.Mocker()
+def test_empty_query_res(mock_docall, m):
+    # mock setup    
+    mock_oauth(m)
+    mock_login(m)
+    sf_bulk_connector.JOB_CHECK_TIMER = 0
+    mockers.mock_empty_query_res(mock_docall, m)
+    
+    setdatadir(tempfile.mkdtemp())
+    with open(config_file) as conf_file:
+        with open('tests/sql/empty_query_res.sql') as job_file:
+            run_job_from_file(conf_file, job_file,
+                              {'src':'test', 'dst':'test'}, {}, None, None)
+
+# @mock.patch.object(sfbulk.bulk.Bulk, 'job_is_completed')
+# @mock.patch.object(sfbulk.callout.Callout, 'docall')
+# @requests_mock.Mocker()
+# def test_bad_query_res(mock_docall, mock_job_is_completed, m):
+#     # mock setup    
+#     mock_oauth(m)
+#     mock_login(m)
+#     sf_bulk_connector.JOB_CHECK_TIMER = 0
+#     mockers.mock_bad_response(mock_job_is_completed, mock_docall, m)
+    
+#     setdatadir(tempfile.mkdtemp())
+#     with open(config_file) as conf_file:
+#         with open('tests/sql/empty_query_res.sql') as job_file:
+#             run_job_from_file(conf_file, job_file,
+#                               {'src':'test', 'dst':'test'}, {}, None, None)
+            
             
 if __name__ == '__main__':
     test_insert_update()

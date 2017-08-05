@@ -30,7 +30,7 @@ from mriya.csvstats import aggregate_csvs
 from mriya.opexecutor import Executor
 from mriya.sql_executor import setdatadir, datadir
 
-SQL_SCRIPTS = ['tests/test.sql', 'tests/test2.sql']
+SQL_SCRIPTS = ['tests/sql/test.sql', 'tests/sql/test2.sql']
 
 def run_mriya(datadir):
     executor = Executor()

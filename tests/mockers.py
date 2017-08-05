@@ -104,6 +104,13 @@ class SFMock(object):
         self._batch_chunked_result(result)
         self._close_job()
 
+    def addmock_bad_query(self, operation, jobid, batchid, result):
+        self._open_job(operation, jobid)
+        self._batch_info(state='Queued', batchid=batchid, new=True)
+        self._batch_info(state='Failed', batchid=batchid)
+        self._batch_info(state='Closed', batchid=batchid)
+        self._close_job()
+
     def side_effect(self):
         return [x.resp for x in self.mocks]        
         
@@ -154,7 +161,7 @@ class SFMock(object):
                                                          batchid=self.batchid)))
 
         
-def mock_insert_load(mock_docall, m):
+def mock_insert_load_delete(mock_docall, m):
     mock_oauth(m)
     mock_login(m)
     http_mock = SFMock('fake-host')
@@ -165,23 +172,62 @@ def mock_insert_load(mock_docall, m):
 "001n000000HDYkxAAH","true","true",""
 "001n000000HDYkyAAH","true","true",""
 """
-    query_resp='''"Name","Account_Birthday__c","Billing_Address__c","Type"
+    query_resp_part1 = '''"Name","Account_Birthday__c","Billing_Address__c","Type"
 "mriya","","Street_Billing_Address_CO9S63EMH4","Account"
-"mriya","2015-05-15","Street_Billing_Address ""PICGZSLC0F""","Account"
+"mriya","2015-05-15","Street_Billing_Address ""PICGZSLC0F""","Account"'''
+
+    query_resp_part2 = '''"Name","Account_Birthday__c","Billing_Address__c","Type"
 "mriya","2005-08-13","Street_Billing_Address
 2YNSCQEHFX","Account"
 "mriya","2000-10-23","Street_Billing_Address, 7VLWJ7CMQX","Account"'''
-    
+
+    delete_resp = '''Id,Success,Created,Error
+"001n000000HDYkvAAH","true","false",""'''
+
     http_mock.addmock_insert_update_delete(
         operation='insert', jobid='750n00000020o33AAA', batchid='751n00000029qH0AAI',
         resp=insert_resp)
     
     http_mock.addmock_query(
         operation='query', jobid='750n00000020o33BBB', batchid='751n00000029q000AI',
-        result=[('752n0000000yXIm', query_resp)])
+        result=[('752n0000000yXIm', query_resp_part1), ('752n0000000yYIm', query_resp_part2)])
+
+    http_mock.addmock_insert_update_delete(
+        operation='delete', jobid='750n00000020o33CCC', batchid='751n00000029qX0AAI',
+        resp=delete_resp)
+   
     # mock install
     mock_docall.side_effect = http_mock.side_effect()
 
+def mock_empty_query_res(mock_docall, m):
+    mock_oauth(m)
+    mock_login(m)
+    http_mock = SFMock('fake-host')
+    empty_resp = 'Records not found for this query'
+
+    http_mock.addmock_query(
+        operation='query', jobid='750n00000020o33DDD', batchid='751n00000029q000AX',
+        result=[('752n0000000yZIm', empty_resp)])
+    
+    # mock install
+    mock_docall.side_effect = http_mock.side_effect()
+
+def mock_bad_response(mock_job_is_completed, mock_docall, m):
+    mock_oauth(m)
+    mock_login(m)
+    http_mock = SFMock('fake-host')
+    empty_resp = 'Records not found for this query'
+
+    # bad query response
+    http_mock.addmock_bad_query(
+        operation='query', jobid='750n00000020o33DDD', batchid='751n00000029q000AX',
+        result=[('752n0000000yZIm', empty_resp)])
+
+    # mock install
+    mock_docall.side_effect = http_mock.side_effect()
+    Bulk.job_is_completed()
+    mock_job_is_completed.assert_any_call()
+    
 def mock_insert_update(mock_docall, m):
     mock_oauth(m)
     mock_login(m)

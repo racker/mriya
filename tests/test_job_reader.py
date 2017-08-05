@@ -271,7 +271,7 @@ def test_job_controller(mock_docall, m):
         test_csv_f.write('"Alexa__c"\n"hello<N CR><N CR>2"\n')
 
     notch = 'test1234567'
-    with open('tests/complicated.sql') as sql_f:
+    with open('tests/sql/complicated.sql') as sql_f:
         lines = sql_f.readlines()
     job_syntax = JobSyntaxExtended(lines)
     with open(config_filename) as conf_file:
@@ -299,7 +299,7 @@ def test_job_controller(mock_docall, m):
     assert open(SqlExecutor.csv_name('test_csv')).read() \
         == open(SqlExecutor.csv_name('test_csv_2')).read()
     # run another test using created data
-    run_test_graph(datadir(), "tests/complicated.sql")
+    run_test_graph(datadir(), "tests/sql/complicated.sql")
     
 def test_batch_splitter():
     loginit(__name__)

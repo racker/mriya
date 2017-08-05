@@ -115,9 +115,10 @@ class SqlExecutor(object):
                     getLogger(STDERR).error('Assert non 0: %s variable value should not be 0' \
                                             % (key))
                     exit(1)
-            else:
-                getLogger(STDERR).error('Bad assertion type: %s' % (assert_type))
-                exit(1)
+            # error can't be handled here as it was handled before in job_syntax.py
+            # else:
+            #     getLogger(STDERR).error('Bad assertion type: %s' % (assert_type))
+            #     exit(1)
 
     @staticmethod
     def get_sub_str_between(query, start_str, end_str):

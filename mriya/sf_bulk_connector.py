@@ -99,7 +99,6 @@ class SfBulkConnector(BaseBulkConnector):
             batch_data.append(
                 bulk_data.prepare_sf_data_to_send(one_line))
         # create batch
-        #print "before", soql_or_csv, "after", batch_data
         batch_id = self.bulk.batch_create(''.join(batch_data))
         return batch_id
         
@@ -211,13 +210,13 @@ class SfBulkConnector(BaseBulkConnector):
         self.handle_op_returning_ids('insert', objname, res, False)
         return res
 
-    def bulk_upsert(self, objname, csv_data, max_batch_size, seq,
-                    upsert_external_field):
-        # not supported 
-        res = self.bulk_common('upsert', objname, csv_data,
-                                upsert_external_field)
-        self.handle_op_returning_ids('upsert', objname, res, False)
-        return res
+    # not supported yet
+    # def bulk_upsert(self, objname, csv_data, max_batch_size, seq,
+    #                 upsert_external_field):
+    #     res = self.bulk_common('upsert', objname, csv_data,
+    #                             upsert_external_field)
+    #     self.handle_op_returning_ids('upsert', objname, res, False)
+    #     return res
 
     def bulk_delete(self, objname, csv_data, max_batch_size, seq):
         res = self.bulk_common('delete', objname, csv_data,
