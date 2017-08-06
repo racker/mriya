@@ -66,6 +66,7 @@ class SfSoapMergeWrapper(object):
             current_chunk[k] = v
 	    if len(current_chunk) == self.max_chunk_size:
                 res = merger.merge(self.objname, current_chunk)
+                getLogger(STDOUT).info('Handled %d merge pairs...' % len(current_chunk))                
                 rows.extend(res)
                 current_chunk.clear()
         res = merger.merge(self.objname, current_chunk)
