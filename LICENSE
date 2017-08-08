@@ -1,4 +1,3 @@
-"""
 Copyright (C) 2016-2017 by Yaroslav Litvinov <yaroslav.litvinov@gmail.com>
 and associates (see AUTHORS).
 
@@ -16,16 +15,3 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with Mriya.  If not, see <http://www.gnu.org/licenses/>.
-"""
-
-
-import requests
-
-class BaseBulkConnector(object):
-    
-    def __init__(self, conn_param):
-        self.conn_param = conn_param
-        self.instance_url = 'https://{prefix}salesforce.com'.format(
-            prefix=conn_param.url_prefix)
-
-        

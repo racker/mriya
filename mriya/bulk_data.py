@@ -1,7 +1,23 @@
+"""
+Copyright (C) 2016-2017 by Yaroslav Litvinov <yaroslav.litvinov@gmail.com>
+and associates (see AUTHORS).
 
+This file is part of Mriya.
+
+Mriya is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Mriya is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Mriya.  If not, see <http://www.gnu.org/licenses/>.
+"""
 __author__ = "Yaroslav Litvinov"
-__copyright__ = "Copyright 2016, Rackspace Inc."
-__email__ = "yaroslav.litvinov@rackspace.com"
 
 from StringIO import StringIO
 from opcsv import CsvWriter
@@ -9,29 +25,6 @@ from opcsv import CsvReader
 from collections import namedtuple
 
 BulkData = namedtuple('BulkData', ['fields', 'rows'])
-
-# not used
-# def csv_from_list_of_dicts(list_of_dicts_data):
-#     output = StringIO()
-#     csv_writer = CsvWriter(output, False)
-#     txt = ''
-#     for name in sorted(list_of_dicts_data[0].keys()):
-#         if txt:
-#             txt += ','
-#         txt += name
-#     txt += '\n'
-#     rows = []
-#     for dict_data in list_of_dicts_data:
-#         row = []
-#         for key in sorted(dict_data.keys()):
-#             row.append(dict_data[key])
-#         rows.append(row)
-#     csv_writer.write_csv(rows)
-#     output.seek(0)
-#     txt += output.getvalue()
-#     output.close()
-#     csv_writer.close()
-#     return txt
 
 def get_stream_from_csv_rows_list(csv_rows_list):
     istream = StringIO()
@@ -83,14 +76,6 @@ def parse_batch_res_data(csv_rows_list):
     istream = get_stream_from_csv_rows_list(csv_rows_list)
     return get_bulk_data_from_csv_stream(istream)
 
-# def prepare_received_sf_data(received_data):
-#     import re
-#     reg_templ = r"\"[^]]*\""
-#     received_data2 = re.sub(reg_templ, 
-#            lambda x:x.group(0).replace('\r\n','<RN CR>').replace('\n','<N CR>'),
-#            received_data)
-#     #print "before", received_data, "after", received_data2
-#     return received_data2
 
 def prepare_received_sf_data(received_data):
     repls = ('\r\n', '<RN CR>'), ('\n', '<N CR>')

@@ -1,7 +1,24 @@
+"""
+Copyright (C) 2016-2017 by Yaroslav Litvinov <yaroslav.litvinov@gmail.com>
+and associates (see AUTHORS).
+
+This file is part of Mriya.
+
+Mriya is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Mriya is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Mriya.  If not, see <http://www.gnu.org/licenses/>.
+"""
 
 __author__ = "Yaroslav Litvinov"
-__copyright__ = "Copyright 2016, Rackspace Inc."
-__email__ = "yaroslav.litvinov@rackspace.com"
 
 from mriya import bulk_data
 from sfbulk import Bulk
@@ -19,8 +36,6 @@ class SfBulkConnector(BaseBulkConnector):
 
     def __init__(self, conn_param):
         super(SfBulkConnector, self).__init__(conn_param)
-        #loginit(__name__)
-        # initialize bulk
         self.bulk = Bulk(self.instance_url)
         self.bulk.login(username=self.conn_param.username,
                         password=self.conn_param.password,
@@ -40,11 +55,17 @@ class SfBulkConnector(BaseBulkConnector):
                 getLogger(STDERR).error('%s bachFailed %s',
                                         batch_id, errmes)
 
-    def handle_op_returning_ids(self, opname, objname, res):
-        result_ids = bulk_data.parse_batch_res_data(res)
+    def handle_op_returning_ids(self, opname, objname, res, merge=False):
+        if not merge:
+            result_ids = bulk_data.parse_batch_res_data(res)
+        else:
+            result_ids = res
         id_idx = result_ids.fields.index('Id')
         success_idx = result_ids.fields.index('Success')
-        error_idx = result_ids.fields.index('Error')
+        if not merge:
+            error_idx = result_ids.fields.index('Error')
+        else:
+            error_idx = result_ids.fields.index('Message')
         max_err_count_output = 100
         for item in result_ids.rows:
             if item[success_idx] != 'true':
@@ -78,7 +99,6 @@ class SfBulkConnector(BaseBulkConnector):
             batch_data.append(
                 bulk_data.prepare_sf_data_to_send(one_line))
         # create batch
-        #print "before", soql_or_csv, "after", batch_data
         batch_id = self.bulk.batch_create(''.join(batch_data))
         return batch_id
         
@@ -187,43 +207,44 @@ class SfBulkConnector(BaseBulkConnector):
     def bulk_insert(self, objname, csv_data, max_batch_size, seq):
         res = self.bulk_common('insert', objname, csv_data,
                                 max_batch_size, seq)
-        self.handle_op_returning_ids('insert', objname, res)
+        self.handle_op_returning_ids('insert', objname, res, False)
         return res
 
-    def bulk_upsert(self, objname, csv_data, max_batch_size, seq,
-                    upsert_external_field):
-        # not supported 
-        res = self.bulk_common('upsert', objname, csv_data,
-                                upsert_external_field)
-        self.handle_op_returning_ids('upsert', objname, res)
-        return res
+    # not supported yet
+    # def bulk_upsert(self, objname, csv_data, max_batch_size, seq,
+    #                 upsert_external_field):
+    #     res = self.bulk_common('upsert', objname, csv_data,
+    #                             upsert_external_field)
+    #     self.handle_op_returning_ids('upsert', objname, res, False)
+    #     return res
 
     def bulk_delete(self, objname, csv_data, max_batch_size, seq):
         res = self.bulk_common('delete', objname, csv_data,
                                 max_batch_size, seq)
-        self.handle_op_returning_ids('delete', objname, res)
+        self.handle_op_returning_ids('delete', objname, res, False)
         return  res
 
     def bulk_update(self, objname, csv_data, max_batch_size, seq):
         res = self.bulk_common('update', objname, csv_data,
                                 max_batch_size, seq)
-        self.handle_op_returning_ids('update', objname, res)
+        self.handle_op_returning_ids('update', objname, res, False)
         return res
 
     def bulk_load(self, objname, soql):
         res = self.bulk_common('query', objname, soql, None, None)
         return res
 
-    def soap_merge(self, objname, csv_data):
+    def soap_merge(self, objname, csv_data, max_chunk_size):
         istream = get_stream_from_csv_rows_list(csv_data)
-        bulk_data = get_bulk_data_from_csv_stream(istream)
+        data = get_bulk_data_from_csv_stream(istream)
         # run
-        merge_engine = SfSoapMergeWrapper(self, objname, bulk_data)
+        merge_engine = SfSoapMergeWrapper(self, objname, data, max_chunk_size)
         if merge_engine.validate() is None:
             getLogger(STDERR).error("Can't prepare merge data. Exiting...")
             exit(1)
-        bulk_data = merge_engine.run_merge()
-        return bulk_data
+        result_ids = merge_engine.run_merge()
+        self.handle_op_returning_ids('soap merge', objname, result_ids, True)
+        return result_ids
           
             
 

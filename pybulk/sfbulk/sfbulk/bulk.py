@@ -97,13 +97,13 @@ class Bulk(sf):
         self.createBatchFromCSV(self.jobinfo,
                                 csv_filename,
                                 max_csvrecord)
-        self.logger.info("Job: %s batch total number: %s" %
+        getLogger(STDERR).debug("Job: %s batch total number: %s" %
                         (self.runningJobId, len(self.jobinfo.batch)))
 
     def batch_create(self, batchdata):
         batch_id = self.createBatch(self.jobinfo,
                                     batchdata)
-        self.logger.info("Job: %s batch total number: %s" %
+        getLogger(STDERR).debug("Job: %s batch total number: %s" %
                         (self.runningJobId, len(self.jobinfo.batch)))
         return batch_id
 
@@ -133,7 +133,7 @@ class Bulk(sf):
         if self.__check_result(dict_result):
             self.__update_running_job(dict_result)
             self.__update_jobinfo(jobinfo, dict_result)
-            self.logger.info("Job: %s created" % jobinfo.id)
+            getLogger(STDERR).debug("Job: %s created" % jobinfo.id)
         else:
             if self._handle_errors(dict_result):
                 self.createJob(jobinfo)
@@ -156,7 +156,7 @@ class Bulk(sf):
         if self.__check_result(dict_result):
             self.__update_running_job(dict_result)
             self.__update_jobinfo(jobinfo, dict_result)
-            self.logger.info("Job: %s state: %s" % (jobinfo.id, jobinfo.state))
+            getLogger(STDERR).debug("Job: %s state: %s" % (jobinfo.id, jobinfo.state))
         else:
             if self._handle_errors(dict_result):
                 self.closeJob(jobinfo)
@@ -184,7 +184,7 @@ class Bulk(sf):
         dict_result = parseXMLResult(resp)
         if self.__check_result(dict_result):
             self.__update_batch_state(jobinfo, dict_result)
-            self.logger.info("Batch: %s status is: %s" %
+            getLogger(STDERR).debug("Batch: %s status is: %s" %
                              (dict_result['id'], dict_result['state']))
             return dict_result['id']
         else:
@@ -317,20 +317,20 @@ class Bulk(sf):
             self.updateBatchStatus(jobinfo, batchId)
             status = jobinfo.findBatchState(batchId)
             if status != self.COMPLETED and status != self.FAILED:
-                self.logger.info("Batch: %s status is: updateing..." % batchId)
+                getLogger(STDERR).debug("Batch: %s status is: updateing..." % batchId)
                 completed = False
 
         if completed == True:
             for batch in jobinfo.batch:
                 if status != self.FAILED:
-                    self.logger.info("Batch: %s status is: %s" %
+                    getLogger(STDERR).debug("Batch: %s status is: %s" %
                                     (batch, status))
                 else:
                     try:
                         stat = jobinfo.batch[batch]['stateMessage']
                     except:
                         stat = 'Exception occured here'
-                    self.logger.info("Batch: %s status is: %s: %s" %
+                    getLogger(STDERR).debug("Batch: %s status is: %s: %s" %
                                      (batch, status,
                                      stat
                                      ))
@@ -351,6 +351,8 @@ class Bulk(sf):
         @type: string
         @param: httpmethods: GET / POST methods to be used in bulk request
         """
+        #print bulkmethod
+        #print submitdata
         headers = self.__standardHeaders
         if headers is not None:
             if type(pheaders) == dict:
@@ -364,9 +366,9 @@ class Bulk(sf):
                 self.__raise('Unauthorized Error')
 
         url = self.__constructBulkUrl(bulkmethod)
-        self.logger.debug("%s url: %s ", httpmethods, url)
-        self.logger.debug("headers: %s", headers)
-        self.logger.debug("data: %s", submitdata)
+        getLogger(STDERR).debug("%s url: %s ", httpmethods, url)
+        getLogger(STDERR).debug("headers: %s", headers)
+        getLogger(STDERR).debug("data: %s", submitdata)
 
         resp = self.callClient.docall(url, httpmethods, submitdata, headers)
 
@@ -376,7 +378,7 @@ class Bulk(sf):
         if 'exceptionCode' in dict_result:
             if dict_result['exceptionCode'] == 'InvalidSessionId':
                 if self.LOG_BACK_IN:
-                    self.logger.info('Invalid session: sleeping and retrying')
+                    getLogger(STDERR).debug('Invalid session: sleeping and retrying')
                     time.sleep(self.LOG_BACK_IN_WAIT_TIME)
                     self.login(self.USERNAME,
                                self.PASSWORD,
@@ -406,7 +408,7 @@ class Bulk(sf):
         return u'/'.join(values)
 
     def __raise(self, message):
-        self.logger.info(message)
+        getLogger(STDERR).debug(message)
         raise BulkException(message)
 
     def __constructBulkUrl(self, bulkmethod):

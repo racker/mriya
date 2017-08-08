@@ -1,8 +1,26 @@
+"""
+Copyright (C) 2016-2017 by Yaroslav Litvinov <yaroslav.litvinov@gmail.com>
+and associates (see AUTHORS).
+
+This file is part of Mriya.
+
+Mriya is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Mriya is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Mriya.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 #!/usr/bin/env python
 
 __author__ = "Yaroslav Litvinov"
-__copyright__ = "Copyright 2016, Rackspace Inc."
-__email__ = "yaroslav.litvinov@rackspace.com"
 
 import logging
 import sys
@@ -11,14 +29,20 @@ LOGGING_LEVEL = logging.INFO
 STDOUT = 'stdout' #reserved name
 STDERR = 'stderr' #reserved name
 LOG = 'mriya.log' #reserved name
+MOREINFO = 'moreinfo' #reserved name
 
 # to avoid add loggers having the same names
-INITIALIZED_LOGGERS = []
+INITIALIZED_LOGGERS = {}
 
 def defaultlog():
     loginit(STDOUT)
+    loginit(MOREINFO, STDOUT)
     loginit(LOG, STDOUT)
     loginit(STDERR, STDOUT)
+
+def ismoreinfo():
+    return MOREINFO in INITIALIZED_LOGGERS \
+        and INITIALIZED_LOGGERS[MOREINFO] != LOG
 
 def loginit(name, log_to=None):
     if name in INITIALIZED_LOGGERS:
@@ -30,6 +54,12 @@ def loginit(name, log_to=None):
     if name == LOG:
         file_handler = logging.FileHandler(log_to, 'w')
         log_format = '%(asctime)s %(levelname)-8s %(message)s'
+    elif log_to == LOG:        
+        file_handler = logging.FileHandler(log_to, 'w')
+        log_format = '%(asctime)s %(levelname)-8s %(message)s'
+    elif name == MOREINFO:
+        file_handler = logging.StreamHandler(sys.stdout)
+        log_format = '%(message)s'
     elif log_to == STDOUT:
         file_handler = logging.StreamHandler(sys.stdout)
         log_format = '%(message)s'
@@ -41,13 +71,11 @@ def loginit(name, log_to=None):
         defaultlog()
         return
 
-    if not file_handler:
-        return
     file_handler.setFormatter(logging.Formatter(log_format))
     logger = logging.getLogger(name)
     logger.setLevel(LOGGING_LEVEL)
     logger.addHandler(file_handler)
-    INITIALIZED_LOGGERS.append(name)
+    INITIALIZED_LOGGERS[name] = log_to
     if LOGGING_LEVEL == logging.DEBUG:
         # These two lines enable debugging at httplib level
         # (requests->urllib3->http.client) You will see the REQUEST,

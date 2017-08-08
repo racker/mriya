@@ -1,8 +1,26 @@
+"""
+Copyright (C) 2016-2017 by Yaroslav Litvinov <yaroslav.litvinov@gmail.com>
+and associates (see AUTHORS).
+
+This file is part of Mriya.
+
+Mriya is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Mriya is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Mriya.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 #!/usr/bin/env python
 
 __author__ = "Yaroslav Litvinov"
-__copyright__ = "Copyright 2016-2017, Rackspace Inc."
-__email__ = "yaroslav.litvinov@rackspace.com"
 
 import tempfile
 from sys import executable as python
@@ -12,7 +30,7 @@ from mriya.csvstats import aggregate_csvs
 from mriya.opexecutor import Executor
 from mriya.sql_executor import setdatadir, datadir
 
-SQL_SCRIPTS = ['tests/test.sql', 'tests/test2.sql']
+SQL_SCRIPTS = ['tests/sql/test.sql', 'tests/sql/test2.sql']
 
 def run_mriya(datadir):
     executor = Executor()

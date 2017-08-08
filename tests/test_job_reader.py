@@ -1,14 +1,33 @@
+"""
+Copyright (C) 2016-2017 by Yaroslav Litvinov <yaroslav.litvinov@gmail.com>
+and associates (see AUTHORS).
+
+This file is part of Mriya.
+
+Mriya is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Mriya is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Mriya.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 #!/usr/bin/env python
 
 __author__ = "Yaroslav Litvinov"
-__copyright__ = "Copyright 2016, Rackspace Inc."
-__email__ = "yaroslav.litvinov@rackspace.com"
 
 import mock
 import requests_mock
 import mockers #local
 import sfbulk
 
+import mriya
 import logging
 import os
 from pprint import PrettyPrinter
@@ -19,13 +38,14 @@ from mriya import bulk_data
 from mriya.job_syntax import JobSyntax, LINE_KEY
 from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_syntax import BATCH_PARAMS_KEY
-from mriya.sql_executor import SqlExecutor, setdatadir
+from mriya.sql_executor import SqlExecutor, setdatadir, datadir
 from mriya.job_controller import JobController
 from mriya.bulk_data import get_bulk_data_from_csv_stream
 from mriya.bulk_data import prepare_received_sf_data
 from mriya.log import loginit, STDOUT, STDERR, LOG
 from mriya.sf_bulk_connector import SfBulkConnector
 from mriya import sf_bulk_connector
+from test_mriya_dmt import run_test_graph
 import tempfile
 
 config_filename = 'test-config.ini'
@@ -88,11 +108,11 @@ SELECT 1 => var:MIN => dst:foo'
 def test_job_syntax():
     setdatadir(tempfile.mkdtemp())
     loginit(__name__)
-    lines = ['--something', #will not be added to parsed values
+    lines = ['--something', #this is a comment line, will not be added to parsed values
              'SELECT 1 => csv:const1',
              'SELECT 1 => var:MIN',
              'SELECT f1, (SELECT f2 FROM csv.one_ten) as f10 FROM \
-csv.one_ten, 9; => csv:final => dst:insert:foo:1:res',
+csv.one_ten, 9; => csv:final:cache => dst:insert:foo:1:res => type:sequential',
              'SELECT 1 as bacth1 from csv.some_csv; \
 => batch_begin:batch1:BATCH',
              'SELECT 1 from dst.some_object WHERE b=a \
@@ -107,6 +127,7 @@ csv.one_ten, 9; => csv:final => dst:insert:foo:1:res',
         {'from': 'csv', 'query': 'SELECT 1', 'var': 'MIN'},
         {'query': 'SELECT f1, (SELECT f2 FROM one_ten) as f10 FROM one_ten, 9;',
          'csv': 'final', 'from': 'csv', 'dst' : 'foo', 'op' : 'insert',
+         'type': 'sequential', 'cache': '',
          'csvlist': ['one_ten'], 'batch_size': '1', 'new_ids_table': 'res'},
         {'query': 'SELECT 1 as bacth1 from some_csv;',
          'batch_begin': ('batch1', 'BATCH'), 'from': 'csv',
@@ -150,8 +171,9 @@ LIMIT 2; => batch_begin:i:NESTED',
              'SELECT Id FROM src.Account LIMIT 1 => csv:sfvar',
              'SELECT * FROM csv.sfvar => var:sfvar',
              'SELECT {one} as f1, {nine}+1 as f2; => csv:one_ten',
+             "SELECT 'one_nine_ten' => var:ONENINETEN",             
              'SELECT f1, {nine} as f9, (SELECT f2 FROM csv.one_ten) as f10 \
-FROM csv.one_ten; => csv:one_nine_ten',
+FROM csv.one_ten; => csv:{ONENINETEN}',
              'SELECT i from csv.ints10000 WHERE i>=2 LIMIT 2; \
 => batch_begin:i:PARAM',
              'SELECT {PARAM}; => var:foo',
@@ -169,7 +191,6 @@ FROM csv.one_ten; => csv:one_nine_ten',
                  'query': "SELECT * FROM {CSV_INTS10000} LIMIT 1;",
                  'var': 'VAR_0'},
                 {'from': 'csv', 'query': 'SELECT "9+0";', 'var': 'nine'},
-
                 {'objname': 'Account','query': 'SELECT Id FROM Account LIMIT 1', 
                  'csv': 'sfvar', 'from': 'src', 'objname': 'Account'},
                 {'query': 'SELECT * FROM sfvar', 'var': 'sfvar',
@@ -177,10 +198,11 @@ FROM csv.one_ten; => csv:one_nine_ten',
 
                 {'query': 'SELECT {one} as f1, {nine}+1 as f2;',
                  'csv': 'one_ten'},
+                {'from': 'csv', 'query': "SELECT 'one_nine_ten'", 'var': 'ONENINETEN'},
                 {'query': 'SELECT f1, {nine} as f9, (SELECT f2 FROM \
 one_ten) as f10 FROM one_ten;',
                  'csvlist': ['one_ten'],
-                 'csv': 'one_nine_ten',
+                 'csv': '{ONENINETEN}',
                  'from': 'csv'},
                 {   'batch': [   {   'line': 'SELECT {PARAM}; => var:foo',
                                      'query': 'SELECT {PARAM};',
@@ -237,38 +259,32 @@ def test_job_controller(mock_docall, m):
     mockers.mock_job_controller(mock_docall, m)
     # test itself
     setdatadir(tempfile.mkdtemp())
+    # test debug coverage
+    mriya.log.INITIALIZED_LOGGERS = {}
+    mriya.log.LOGGING_LEVEL = logging.DEBUG
     loginit(__name__)
     print "test_job_controller"
-
+    
+    # prepare test_csv.csv
     test_csv = ['"Alexa__c"', '"hello\n\n2"']
     with open(SqlExecutor.csv_name('test_csv'), "w") as test_csv_f:
         test_csv_f.write('"Alexa__c"\n"hello<N CR><N CR>2"\n')
 
-    notch = randint(0, 1000000)
-    print "notch", notch
-    lines = ["SELECT Id,Account_Birthday__c,Name,Alexa__c FROM src.Account LIMIT 1; \
-=> csv:some_data",
-             "SELECT Id from csv.some_data LIMIT 1; => var:id_test",
-             "SELECT Account_Birthday__c,Name,Alexa__c FROM csv.some_data; \
-=> csv:some_data_staging => dst:insert:Account:1:newids",
-             "UPDATE csv.some_data SET Account_Birthday__c=null, Name='%d'; \
-             SELECT Id,Account_Birthday__c,Name,Alexa__c FROM csv.some_data \
-WHERE Id = '{id_test}' \
-             => csv:some_data_staging => dst:update:Account:1:res_ids" % notch,
-             "SELECT '{id_test}' as Id,Alexa__c FROM csv.test_csv => csv:some_data_staging2 => \
-              dst:update:Account:1:res_ids",
-             "SELECT Alexa__c FROM dst.Account WHERE Id = '{id_test}' => csv:test_csv_2"]
+    notch = 'test1234567'
+    with open('tests/sql/complicated.sql') as sql_f:
+        lines = sql_f.readlines()
     job_syntax = JobSyntaxExtended(lines)
     with open(config_filename) as conf_file:
         job_controller = JobController(conf_file.name, endpoint_names,
                                        job_syntax, {}, False)
     job_controller.run_job()
     del job_controller
+    # check resulted data
     with open(SqlExecutor.csv_name('some_data_staging')) as resulted_file:
         csv_data = get_bulk_data_from_csv_stream(resulted_file)
         name_idx = csv_data.fields.index('Name')
         assert 1 == len(csv_data.rows)
-        assert csv_data.rows[0][name_idx] == str(notch)
+        assert csv_data.rows[0][name_idx] == notch
     with open(SqlExecutor.csv_name('newids')) as newids_file:
         csv_data = get_bulk_data_from_csv_stream(newids_file)
         id_idx = csv_data.fields.index('Id')
@@ -280,7 +296,10 @@ WHERE Id = '{id_test}' \
         for row in csv_data.rows:
             assert len(row[id_idx]) >= 15
 
-    assert open(SqlExecutor.csv_name('test_csv')).read() == open(SqlExecutor.csv_name('test_csv_2')).read()
+    assert open(SqlExecutor.csv_name('test_csv')).read() \
+        == open(SqlExecutor.csv_name('test_csv_2')).read()
+    # run another test using created data
+    run_test_graph(datadir(), "tests/sql/complicated.sql")
     
 def test_batch_splitter():
     loginit(__name__)

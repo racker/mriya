@@ -1,26 +1,30 @@
 """
-Copyright (C) 2012-2013 by Clearcode <http://clearcode.cc>
+Copyright (C) 2016-2017 by Yaroslav Litvinov <yaroslav.litvinov@gmail.com>
 and associates (see AUTHORS).
 
-This file is part of sfbulk.
+This file is part of Mriya.
 
-sfbulk is free software: you can redistribute it and/or modify
+Mriya is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-sfbulk is distributed in the hope that it will be useful,
+Mriya is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with sfbulk.  If not, see <http://www.gnu.org/licenses/>.
+along with Mriya.  If not, see <http://www.gnu.org/licenses/>.
 """
+
 import requests
-
+from collections import namedtuple
 from sfbulk.utils_xml import parseXMLResultList
+from logging import getLogger
+from log import STDERR
 
+MergeData = namedtuple('MergeData', ['MasterRecordId', 'MergeRecordId'] )
 
 # XML CONSTANS
 
@@ -77,13 +81,6 @@ class SoapException(Exception):
         if detail:
             self.detail = detail
 
-    def get_detail(self):
-        return self.detail or self.default_detail
-
-    def __str__(self):
-        return self.get_detail()
-
-
 class SoapMerge(object):
     """Standard enterprise objects merge"""
 
@@ -105,10 +102,12 @@ class SoapMerge(object):
         Invokes standard object's merge.
         @merge_dict - {'master_record': ['mergeid1', .. , 'mergeidn']}
         """
-
+        keys_to_save_order = []
+        
         # prepare request body
         mergerequest = ''
         for masterid, mergeidsl in merge_dict.iteritems():
+            keys_to_save_order.append(masterid)
             mergeids = ''
             for mergeid in mergeidsl:
                 mergeids += MERGE_IDS_LIST_BODY_PART.format(mergeid=mergeid)
@@ -119,26 +118,68 @@ class SoapMerge(object):
             sessionid=self.sessionid,
             mergerequest=mergerequest)
 
+        getLogger(STDERR).debug(merge_soap_request_body)
         response = self._send_merge_request(self.soap_url, merge_soap_request_body)
-        self._check_response(response)
-        return self._result(parseXMLResultList(response.content, RESPONSE_LIST_NAME))
+        getLogger(STDERR).debug(response.content)
+        rows_res = self._parse_merge_results(self._get_check_result(response))
+        getLogger(STDERR).debug(rows_res)
+        return self._get_ordered_results(keys_to_save_order, rows_res)
         
     # HELPERS
 
     @staticmethod
-    def _result(res):
-        if RESPONSE_LIST_NAME in res:
-            return res[RESPONSE_LIST_NAME]
+    def _get_ordered_results(ordered_keys, rows_res):
+        # As some of sf results not returning id in result, add it here
+        ordered_rows = []
+        for idx, key in enumerate(ordered_keys):
+            row = rows_res[idx]
+            id_val = row[0]
+            if id_val and key != id_val:
+                raise Exception('Soap Merge internal error %s != %s' %
+                                (key, id_val))
+            else:
+                row[0] = key
+            ordered_rows.append(tuple(row))
+        return ordered_rows
+    
+    @staticmethod
+    def _parse_merge_results(results):
+        res = []
+        for dict_res in results:
+            oneparsed = []
+            if type(dict_res) is dict:
+                if 'id' in dict_res:
+                    oneparsed.append(dict_res['id'])
+                else:
+                    oneparsed.append('')
+                oneparsed.append(dict_res['success'])
+                if 'statusCode' in dict_res:
+                    oneparsed.append(dict_res['statusCode'])
+                else:
+                    oneparsed.append('')
+                if 'message' in dict_res:
+                    oneparsed.append(dict_res['message'])
+                else:
+                    oneparsed.append('')
+            res.append(oneparsed)
+        return res
+
+    @staticmethod
+    def _result(res, listname):
+        if listname in res:
+            return res[listname]
         else:
             return [res]
 
     def _send_merge_request(self, soap_url, merge_soap_request_body):
+        getLogger(STDERR).debug(soap_url)
         return requests.post(soap_url,
                              merge_soap_request_body,
                              headers=MERGE_SOAP_REQUEST_HEADERS)
         
-    def _check_response(self,response):
-        res = self._result(parseXMLResultList(response.content, RESPONSE_LIST_NAME))
+    def _get_check_result(self,response):
+        res = self._result(parseXMLResultList(response.content, RESPONSE_LIST_NAME),
+                           RESPONSE_LIST_NAME)
         if not res:
             raise Exception('Bad soap merge response')
         else:
@@ -149,3 +190,15 @@ class SoapMerge(object):
             raise SoapException('{message}: {code}'.format(
                 message=fault_string, code=fault_code))
 
+        # print 'mergedRecordIds',\
+        #     self._result(parseXMLResultList(response.content, 'mergedRecordIds'),
+        #                  'mergedRecordIds')
+
+        # print 'updatedRelatedIds',\
+        #     self._result(parseXMLResultList(response.content, 'updatedRelatedIds'),
+        #                  'updatedRelatedIds')
+        
+        return res
+
+
+        

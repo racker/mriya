@@ -1,13 +1,34 @@
+"""
+Copyright (C) 2016-2017 by Yaroslav Litvinov <yaroslav.litvinov@gmail.com>
+and associates (see AUTHORS).
+
+This file is part of Mriya.
+
+Mriya is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Mriya is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Mriya.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 #!/usr/bin/env python
 
 __author__ = "Yaroslav Litvinov"
-__copyright__ = "Copyright 2016, Rackspace Inc."
-__email__ = "yaroslav.litvinov@rackspace.com"
 
 SQL_TYPE_SQLITE = 'sqlite'
 SQL_TYPE_SF = 'salesforce'
 
 TRANSMITTER = '=>'
+ASSERT_KEY = 'assert'
+ASSERT_ZERO = 'zero'
+ASSERT_NONZERO = 'nonzero'
 VAR_KEY = 'var'
 CSV_KEY = 'csv'
 DST_KEY = 'dst'
@@ -18,6 +39,7 @@ LINE_KEY = 'line'
 MACRO_KEY = 'macro'
 CONST_KEY = 'const'
 PUBLISH_KEY = 'publish'
+NOPE_KEY = 'nope' # stub param 
 
 BATCH_PARAMS_KEY = 'batch_params'
 BATCH_BEGIN_KEY = 'batch_begin'
@@ -44,7 +66,7 @@ CSVLIST_KEY = 'csvlist'
 
 from logging import getLogger
 from itertools import izip
-from mriya.log import loginit, STDOUT, LOG
+from mriya.log import loginit, STDOUT, LOG, STDERR
 
 class JobSyntax(object):
 
@@ -140,9 +162,12 @@ class JobSyntax(object):
                 query = query[csv_pos+len(CSV_KEY):]
                 draft_csv_name = query.split('.')[1]
                 csv_name = JobSyntax.ignore_punctuation(draft_csv_name)
-                csv_name = csv_name.split()[0]
-                if csv_name not in values[CSVLIST_KEY]:
-                    values[CSVLIST_KEY].append(csv_name)
+                try:
+                    csv_name = csv_name.split()[0]
+                    if csv_name not in values[CSVLIST_KEY]:
+                        values[CSVLIST_KEY].append(csv_name)
+                except:
+                    pass # can't add csv_name to list as nothing to extract
             else:
                 break
         return values
@@ -190,8 +215,8 @@ class JobSyntax(object):
             key = key_vals[0]
             val = key_vals[1]
         except:
-            getLogger(STDOUT).error('Error parsing transmitter value: %s', pair)
-            raise
+            getLogger(STDERR).error('Error parsing transmitter value: %s', pair)
+            exit(1)
         if key == CSV_KEY:
             values[key] = val
             if len(key_vals) > 2:
@@ -204,10 +229,13 @@ class JobSyntax(object):
                 flag = key_vals[2]
                 if flag == PUBLISH_KEY:
                     values[PUBLISH_KEY] = ''
-        elif key == CONST_KEY:
+        elif key == NOPE_KEY or key == CONST_KEY or key == BATCH_TYPE_KEY:
             values[key] = val
-        elif key == BATCH_TYPE_KEY:
+        elif key == ASSERT_KEY:
             values[key] = val
+            if val != ASSERT_ZERO and val != ASSERT_NONZERO:
+                getLogger(STDERR).error('Bad assertion type => assert:%s' % val)
+                exit(1)
         elif key == DST_KEY or key == SRC_KEY:
             objname_val = key_vals[2]
             values[OP_KEY] = val
@@ -232,7 +260,9 @@ class JobSyntax(object):
             values[key] = val
             # count of rest params must be even
             if len(key_vals) % 2:
-                raise Exception("Macro params delimeter ':' is missing. params: %s" % str(pair))
+                getLogger(STDERR).error("Macro params delimeter ':' is missing. params: %s" \
+                                        % str(pair))
+                exit(1)
             it = iter(key_vals[2:])
             for key, val in izip(it, it):
                 if REPLACE_KEY not in values:
@@ -241,6 +271,6 @@ class JobSyntax(object):
                     values[REPLACE_KEY][key] = val
         else:
             print key, val
-            assert(0)
+            raise Exception("Key '%s' is missing" % (key))
         return values
 

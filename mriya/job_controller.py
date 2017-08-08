@@ -1,8 +1,26 @@
+"""
+Copyright (C) 2016-2017 by Yaroslav Litvinov <yaroslav.litvinov@gmail.com>
+and associates (see AUTHORS).
+
+This file is part of Mriya.
+
+Mriya is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Mriya is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Mriya.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 #!/usr/bin/env python
 
 __author__ = "Yaroslav Litvinov"
-__copyright__ = "Copyright 2016, Rackspace Inc."
-__email__ = "yaroslav.litvinov@rackspace.com"
 
 import os
 import time
@@ -13,12 +31,13 @@ from mriya import sql_executor
 from mriya.log import loginit, LOG, STDOUT
 from mriya.job_syntax import *
 from mriya.opexecutor import Executor
-from mriya.sql_executor import SqlExecutor
+from mriya.sql_executor import SqlExecutor, var_replaced
 from mriya.sqlite_executor import SqliteExecutor
 from mriya.salesforce_executor import SalesforceExecutor
 from mriya.data_connector import create_bulk_connector
 from mriya.bulk_data import csv_from_bulk_data, parse_batch_res_data
-from mriya.job_syntax_extended import JobSyntaxExtended, BATCH_KEY
+from mriya.bulk_data import BulkData
+from mriya.job_syntax_extended import BATCH_KEY
 from mriya.sf_merge import SoapMerge
 from mriya.config import *
 
@@ -93,9 +112,10 @@ class JobController(object):
                 return
             getLogger(LOG).info(job_syntax_item)
             if not is_var and is_csv and is_cache:
-                csv_name = SqlExecutor.csv_name(job_syntax_item[CSV_KEY])
-                csv_size = SqlExecutor.csv_size(job_syntax_item[CSV_KEY])
-                if csv_size and SqlExecutor.valid_csv_exist(job_syntax_item[CSV_KEY]):
+                csv_key_val = var_replaced(self.variables, job_syntax_item, CSV_KEY)
+                csv_name = SqlExecutor.csv_name(csv_key_val)
+                csv_size = SqlExecutor.csv_size(csv_key_val)
+                if csv_size and SqlExecutor.valid_csv_exist(csv_key_val):
                     getLogger(LOG).info(
                         "SKIP query: '%s', csvfile exist: %s",
                         query, csv_name)
@@ -114,20 +134,20 @@ class JobController(object):
     def step_by_step(self):
         yes = set(['yes','y', 'ye', ''])
         no = set(['no','n'])
-        choice = raw_input().lower()
-        if choice in yes:
-            return True
-        elif choice in no:
-            return False
-        else:
-            print "Please respond with 'yes' or 'no'"
+        while True:
+            choice = raw_input().lower()
+            print "choice", choice
+            if choice in yes:
+                return True
+            elif choice in no:
+                return False
+            else:
+                print "Please respond with 'yes' or 'no'"
 
     def run_job(self):
         batch_items = None
         batch = None
         for job_syntax_item in self.job_syntax:
-            if not job_syntax_item:
-                continue
             if self.debug_steps:
                 print "NEXT SQL:", SqlExecutor.prepare_query_put_vars(
                     job_syntax_item['line'], self.variables)
@@ -135,11 +155,11 @@ class JobController(object):
                 if not self.step_by_step():
                     exit(0)
             if BATCH_KEY in job_syntax_item:
-                self.run_batch_(job_syntax_item)
+                self.run_in_loop(job_syntax_item)
             else:
                 self.handle_job_item_(job_syntax_item)
 
-    def run_batch_(self, job_syntax_item):
+    def run_in_loop(self, job_syntax_item):
         # run batch_begin query and save list of batches to var
         self.handle_job_item_(job_syntax_item)
         # run batch itself
@@ -155,11 +175,8 @@ class JobController(object):
             return
         for param in batch_params:
             self.variables[batch_param_name] = param
-            getLogger(STDOUT).info("------ batch %s/%s",
+            getLogger(STDOUT).info("------ loop %s/%s",
                                 param, batch_params)
-            if PUBLISH_KEY in job_syntax_item:
-                getLogger(STDOUT).info(
-                    "%s=%s", batch_param_name, param )
             getLogger(LOG)\
                 .info("set batch var: %s=%s",
                       batch_param_name, param )
@@ -169,10 +186,10 @@ class JobController(object):
                 if type(val) is not list:
                     external_vars[key] = val
             #run batches sequentially
-            self.run_internal_batch(param, self.config_file,
+            self.run_loop_procedure(param, self.config_file,
                                     batch_syntax_items, external_vars)
 
-    def run_internal_batch(self, _, config_filename,
+    def run_loop_procedure(self, _, config_filename,
                            job_syntax_items, variables):
         batch_job = JobController(self.config_file.name,
                                   self.endpoints.endpoint_names,
@@ -181,13 +198,6 @@ class JobController(object):
                                   self.debug_steps)
         batch_job.run_job()
         del batch_job
-
-    def batch_input_text_data(self, job_syntax_items):
-        res = ''
-        for item in job_syntax_items:
-            if item:
-                res += item[LINE_KEY] + '\n'
-        return res
 
     def csvdata(self, filename):
         csv_data = None
@@ -204,10 +214,12 @@ class JobController(object):
             elif job_syntax_item[BATCH_TYPE_KEY] == BATCH_TYPE_SEQUENTIAL_KEY:
                 batch_seq = True
             else:
-                raise Exception('Unknown batch type: %s', job_syntax_item[BATCH_TYPE_KEY])
+                getLogger(STDERR).error('Unknown batch type: %s', job_syntax_item[BATCH_TYPE_KEY])
+                exit(1)
         else:
             batch_seq = False # parallel by default
-        csv_filename = SqlExecutor.csv_name(job_syntax_item[CSV_KEY])
+        csv_key_val = var_replaced(self.variables, job_syntax_item, CSV_KEY)
+        csv_filename = SqlExecutor.csv_name(csv_key_val)
         csv_data = self.csvdata(csv_filename)
         num_lines = len(csv_data)
         # do nothing for empty data set
@@ -233,7 +245,8 @@ class JobController(object):
                     res = conn.bulk_insert(objname, csv_data,
                                            max_batch_size, batch_seq)
                 else:
-                    assert 0
+                    getLogger(STDERR).error("Operation '%s' isn't supported" % opname)
+                    exit(1)
 
                 result_ids = parse_batch_res_data(res)
                
@@ -252,26 +265,25 @@ class JobController(object):
 
     def handle_transmitter_merge(self, job_syntax_item, endpoint):
         opname = job_syntax_item[OP_KEY]
-        csv_filename = SqlExecutor.csv_name(job_syntax_item[CSV_KEY])
+        csv_key_val = var_replaced(self.variables, job_syntax_item, CSV_KEY)        
+        csv_filename = SqlExecutor.csv_name(csv_key_val)
         csv_data = self.csvdata(csv_filename)
         num_lines = len(csv_data)
         # do nothing for empty data set
         if num_lines <= 1:
             getLogger(LOG).info('skip empty csv')
             from mriya.sf_merge_wrapper import HEADER
-            result_ids = HEADER
+            result_ids = BulkData(HEADER, [])
         else:
             objname = job_syntax_item[endpoint]
             conn = self.endpoints.endpoint(endpoint)
+            max_batch_size = int(job_syntax_item[BATCH_SIZE_KEY])
             getLogger(STDOUT).info('EXECUTE: %s %s, lines count=%d',
                                      opname, objname, num_lines-1)
             t_before = time.time()
             if len(csv_data):
-                if opname == OP_MERGE:
-                    res = conn.soap_merge(objname, csv_data)
-                else:
-                    assert 0
-                result_ids = res
+
+                result_ids = conn.soap_merge(objname, csv_data, max_batch_size)
             t_after = time.time()
             getLogger(STDOUT).info('SF %s Took time: %.2f' \
                                    % (opname, t_after-t_before))
@@ -301,9 +313,5 @@ class JobController(object):
                 self.handle_transmitter_op(job_syntax_item, endpoint)
             elif opname == OP_MERGE:
                 self.handle_transmitter_merge(job_syntax_item, endpoint)
-            else:
-                getLogger(STDOUT).error('Unsupported operation: %s',
-                                        opname)
-                assert(0)
 
 

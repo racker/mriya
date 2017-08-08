@@ -1,15 +1,34 @@
+"""
+Copyright (C) 2016-2017 by Yaroslav Litvinov <yaroslav.litvinov@gmail.com>
+and associates (see AUTHORS).
+
+This file is part of Mriya.
+
+Mriya is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Mriya is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Mriya.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 #!/usr/bin/env python
 
 __author__ = "Yaroslav Litvinov"
-__copyright__ = "Copyright 2016, Rackspace Inc."
-__email__ = "yaroslav.litvinov@rackspace.com"
 
 import os
 import re
 from logging import getLogger
 from mriya.job_syntax import JobSyntax, CSV_KEY, QUERY_KEY
 from mriya.job_syntax import DST_KEY, SRC_KEY, PUBLISH_KEY
-from mriya.log import loginit, LOG, STDOUT
+from mriya.job_syntax import ASSERT_KEY, ASSERT_ZERO, ASSERT_NONZERO
+from mriya.log import loginit, LOG, STDOUT, STDERR, MOREINFO
 
 # real data path must be set dynamically
 DATADIRNAME = None
@@ -20,6 +39,11 @@ def setdatadir(datadir):
 
 def datadir():
     return DATADIRNAME
+
+def var_replaced(variables, job_syntax_item, key):
+    """ Get job syntax item's value. If value is variable then replace by var value and return """
+    val = job_syntax_item[key]
+    return SqlExecutor.prepare_query_put_vars(val, variables)
 
 class SqlExecutor(object):
     def __init__(self, job_syntax_item, variables):
@@ -54,10 +78,11 @@ class SqlExecutor(object):
 
     def saved_csv(self):
         if CSV_KEY in self.job_syntax_item:
-            name = self.job_syntax_item[CSV_KEY]
-            getLogger(LOG).info('Saved csv: %s, size: %d',
-                                   self.csv_name(name),
-                                   self.csv_size(name))
+            csv_key_val = var_replaced(
+                self.variables, self.job_syntax_item, CSV_KEY)
+            getLogger(MOREINFO).info('Saved csv: %s, size: %d',
+                                   self.csv_name(csv_key_val),
+                                   self.csv_size(csv_key_val))
 
     @staticmethod
     def get_query_var_names(query):
@@ -78,6 +103,22 @@ class SqlExecutor(object):
         getLogger(LOG).info("set var: %s=%s", key, value)
         if PUBLISH_KEY in self.job_syntax_item:
             getLogger(STDOUT).info("%s=%s", key, value)
+        if ASSERT_KEY in self.job_syntax_item:
+            assert_type = self.job_syntax_item[ASSERT_KEY]
+            if assert_type == ASSERT_ZERO:
+                if int(value) != 0:
+                    getLogger(STDERR).error('Assert 0: %s variable value %s should be 0' % \
+                                            (key, value))
+                    exit(1)
+            elif assert_type == ASSERT_NONZERO:
+                if int(value) == 0:
+                    getLogger(STDERR).error('Assert non 0: %s variable value should not be 0' \
+                                            % (key))
+                    exit(1)
+            # error can't be handled here as it was handled before in job_syntax.py
+            # else:
+            #     getLogger(STDERR).error('Bad assertion type: %s' % (assert_type))
+            #     exit(1)
 
     @staticmethod
     def get_sub_str_between(query, start_str, end_str):

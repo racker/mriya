@@ -1,8 +1,26 @@
+"""
+Copyright (C) 2016-2017 by Yaroslav Litvinov <yaroslav.litvinov@gmail.com>
+and associates (see AUTHORS).
+
+This file is part of Mriya.
+
+Mriya is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Mriya is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Mriya.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 #!/usr/bin/env python
 
 __author__ = "Yaroslav Litvinov"
-__copyright__ = "Copyright 2016, Rackspace Inc."
-__email__ = "yaroslav.litvinov@rackspace.com"
 
 import argparse
 import glob
@@ -14,7 +32,7 @@ from mriya import sql_executor
 from mriya.job_syntax import *
 from mriya.job_syntax_extended import JobSyntaxExtended
 from mriya.job_controller import JobController
-from mriya.log import loginit, STDOUT, STDERR, LOG
+from mriya.log import loginit, STDOUT, STDERR, LOG, MOREINFO
 from mriya.config import *
 
 def run_job_from_file(config_file, job_file, endpoints, variables,
@@ -33,7 +51,8 @@ def run_job_from_file(config_file, job_file, endpoints, variables,
                       (x[OP_KEY] == OP_DELETE or \
                        x[OP_KEY] == OP_UPDATE or \
                        x[OP_KEY] == OP_INSERT or \
-                       x[OP_KEY] == OP_UPSERT)]
+                       x[OP_KEY] == OP_UPSERT or \
+                       x[OP_KEY] == OP_MERGE)]
     if read_only and restricted_ops:
         fmt_mes = "Option -read-only is specified, so \
 '%s' operations can't be used in current session"
@@ -75,6 +94,8 @@ def add_args(parser):
                         help="Job file with sql instructions",
                         type=file)
     parser.add_argument('--step-by-step', action='store_true', required=False)
+    parser.add_argument('--moreinfo', action='store_true', required=False,
+                        help="Display sql statement, etc. ")
     parser.add_argument('--var', nargs='*', action='append')
     parser.add_argument("--src-name",
                         help="Name of section from config related to source",
@@ -133,10 +154,10 @@ if __name__ == '__main__':
     except OSError, e:
         if e.errno != errno.EEXIST:
             raise
-    
+   
     loginit(STDOUT)
     loginit(STDERR)
-    
+
     for input_file in jobs:
         getLogger(STDOUT).info('Starting %s' % input_file.name)        
         # prepare log path
@@ -147,6 +168,14 @@ if __name__ == '__main__':
         except OSError, e:
             if e.errno != errno.EEXIST:
                 raise
-        loginit(LOG, logpath + '.log')        
+        loginit(LOG, logpath + '.log')
+
+        if args.moreinfo:
+            loginit(MOREINFO)
+        else:
+            loginit(MOREINFO, LOG)
+        
         run_job_from_file(args.conf_file, input_file, endpoints, variables,
                           args.step_by_step, args.read_only)
+
+        

@@ -1,8 +1,26 @@
+"""
+Copyright (C) 2016-2017 by Yaroslav Litvinov <yaroslav.litvinov@gmail.com>
+and associates (see AUTHORS).
+
+This file is part of Mriya.
+
+Mriya is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Mriya is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Mriya.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 #!/usr/bin/env python
 
 __author__ = "Yaroslav Litvinov"
-__copyright__ = "Copyright 2016, Rackspace Inc."
-__email__ = "yaroslav.litvinov@rackspace.com"
 
 import time
 from logging import getLogger
@@ -11,6 +29,7 @@ from mriya.job_syntax import QUERY_KEY, OBJNAME_KEY, CSV_KEY, VAR_KEY
 from mriya.job_syntax import CONST_KEY, DST_KEY, SRC_KEY, FROM_KEY
 from mriya import bulk_data
 from mriya.log import loginit, STDOUT
+from mriya.sql_executor import var_replaced
 
 EMPTY_SF_RESPONSE = 'Records not found for this query'
 
@@ -54,7 +73,7 @@ class SalesforceExecutor(SqlExecutor):
         getLogger(STDOUT).info('SF Took time: %.2f' % (t_after-t_before))
         retcode = 0
         return retcode
-
+ 
     def handle_result(self, bulk_res):
         # handle empty result - fix it by adding column names
         if bulk_res and bulk_res[0] == EMPTY_SF_RESPONSE:
@@ -68,7 +87,8 @@ class SalesforceExecutor(SqlExecutor):
 
         # handle result
         if CSV_KEY in self.job_syntax_item:
-            csvfname = SqlExecutor.csv_name(self.job_syntax_item[CSV_KEY])
+            csv_key_val = var_replaced(self.variables, self.job_syntax_item, CSV_KEY)
+            csvfname = SqlExecutor.csv_name(csv_key_val)
             bulk_data.save_escape_csv_lines_as_csv_file(csvfname, bulk_res)
         elif VAR_KEY in self.job_syntax_item:
             res = bulk_data.parse_batch_res_data(bulk_res)

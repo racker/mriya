@@ -2,6 +2,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/YaroslavLitvinov/mriya/badge.svg?branch=master)](https://coveralls.io/github/YaroslavLitvinov/mriya?branch=master)
 
 # mriya
+![Github repo](https://github.com/YaroslavLitvinov/mriya)
 The hybrid query engine that combines Salesforce bulk queries with
 Sqlite3 queries. It supports batches of SQL queries wrapped into
 specific syntax. Salesforce bulk operations supported:
@@ -28,6 +29,7 @@ py.test --cov-report=term-missing --cov=mriya tests/
 Use sample-config.ini as a base for your config files.<br>
 Specify `[dst]` and `[src]` sections for dst/src endpoints.
 ```
+# Setup an endpoint/s 
 [dst]
 consumer_key = 
 consumer_secret = 
@@ -36,6 +38,19 @@ password =
 host_prefix = 
 production = True/False
 ```
+* Major command line params
+* Provide config file as well as corresponding endpoints:<br>
+```--conf-file config.ini --src-name 'OLD ENDPOINT' --dst-name 'NEW ENDPOINT'```
+* Specify one or several jobs:<br>
+```--job path/to/some_file1.sql --job path/to/some_file2.sql
+```
+* You can also provide a job as stdin data, for example:<br>
+```echo "
+SELECT 'a' as hero => csv:test
+SELECT * FROM csv.test => var:TEST_VAR:publish" | python mriya_dmt.py --job-file /dev/stdin ...```
+
+* Define data path as cmd line param, providing of absolute paths could be a good practice:<br>
+```--datadir some/data/path```
 
 * Tests<br>
 It uses mocks for any http requests made by application tests.
@@ -125,12 +140,12 @@ SELECT 'hello' => var:VAR1 \
 ```
 
 example of macro file:
-```
+```sql
 -- {PARAM1}, {PARAM2} will be substituted by param value param_value_no_spaces
 -- {VAR1} will be substituted by var value
 SELECT {PARAM1}, '{VAR1}' as hello, ID FROM csv.table => csv:{PARAM2}_some_string
 -- resulted macro will be transformated into:
--- SELECT param_value_no_spaces, 'hello' as hello, ID FROM csv.table => csv:some_table_some_string
+SELECT param_value_no_spaces, 'hello' as hello, ID FROM csv.table => csv:some_table_some_string
 ```
 
 Use following construction to run some code in loop
@@ -157,4 +172,28 @@ example of resulted Merge_dst_Account_res_ids.csv:
 Id,Success,StatusCode,Message
 "0016100000M94ppAAB","false","ENTITY_IS_DELETED","entity is deleted"
 "0016100000M94ppAAA","true","",""
+```
+
+Assertion of variable's value. Assert val=0 and val!=0 correspondingly:
+```sql
+--Assert VAR1=0, will raise exception if VAR1 is not 0
+SELECT count() FROM csv.test => var:VAR1:publish => assert:zero
+
+--Assert VAR2!=0, will raise exception if VAR2 is 0
+SELECT count() FROM csv.test => var:VAR2:publish => assert:nonzero
+```
+
+Limited support of variables added for using outside of queries, after '=>' specified.
+Variable can be used with 'csv' key only, like '=> csv:csv_{VARIABLE}_csv', for this case
+variable name will be substituted by it's value.
+For any other keys variable shouldn't be used outside of query and will be ignored.
+```sql
+SELECT 'May the force be with you' => var:VARIABLE
+SELECT '1' as fieldname => csv:csv_{VARIABLE}_csv
+-- it's will be translated into
+-- SELECT '1' as fieldname => csv:csv_May the force be with you_csv
+
+SELECT 'var1' => var:VAR1
+SELECT '' => var:{VAR1}
+-- you will get 2 vars: VAR1=var1, {VAR1}=''
 ```

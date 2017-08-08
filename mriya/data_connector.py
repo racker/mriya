@@ -1,3 +1,22 @@
+"""
+Copyright (C) 2016-2017 by Yaroslav Litvinov <yaroslav.litvinov@gmail.com>
+and associates (see AUTHORS).
+
+This file is part of Mriya.
+
+Mriya is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Mriya is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Mriya.  If not, see <http://www.gnu.org/licenses/>.
+"""
 
 __author__ = 'Volodymyr Varchuk, Yaroslav Litvinov'
 
@@ -12,9 +31,6 @@ ConnectorParam = namedtuple('ConnectorParam',
                          ['username', 'password', 'url_prefix',
                           'production', 'consumer_key',
                           'consumer_secret', 'token'])
-
-QUERY_LIMIT = 200
-session_file = 'sessions.ini'
 
 def get_conn_param(conf_dict):
     param = ConnectorParam(conf_dict[USERNAME_SETTING].encode('utf-8'),
@@ -41,9 +57,9 @@ def create_bulk_connector(config, setting_name):
     return conn
 
 class AuthToken(object):
-    def __init__(self, conn_param, cache_file_path):
+    def __init__(self, conn_param, sessions_file):
         self.conn_param = conn_param
-        self.cache_file_path = cache_file_path
+        self.sessions_file = sessions_file
         self.conn_param = conn_param_set_token(conn_param, self.get_token())
 
     def conn_param_with_token(self):
@@ -82,7 +98,7 @@ class AuthToken(object):
 
     def get_cached_token(self):
         try:
-            tokens_dict = load(open(self.cache_file_path, 'r'))
+            tokens_dict = load(open(self.sessions_file, 'r'))
         except:
             return None
         if self.conn_param.username in tokens_dict.keys():
@@ -93,11 +109,11 @@ class AuthToken(object):
     def save_token(self, token):
         tokens_dict = {}
         try:
-            tokens_dict = load(open(session_file, 'r'))
+            tokens_dict = load(open(self.sessions_file, 'r'))
         except:
             pass
         tokens_dict[self.conn_param.username] = token
-        dump(tokens_dict, open(session_file, 'w'))
+        dump(tokens_dict, open(self.sessions_file, 'w'))
         
 
 
